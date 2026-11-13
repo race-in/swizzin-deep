@@ -2,6 +2,10 @@
 
 if [[ -f /install/.sabnzbd.lock ]]; then
     if [[ -f /etc/systemd/system/sabnzbd@.service ]]; then
+        if ! apt-cache show python2.7-dev > /dev/null 2>&1; then
+            echo_warn "python2.7 is not available on this release, skipping the legacy SABnzbd migration."
+            exit 0
+        fi
         echo_progress_start "Updating SABnzbd to use pyenv"
         user=$(_get_master_username)
         codename=$(_os_codename)

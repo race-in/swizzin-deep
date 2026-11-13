@@ -2,6 +2,10 @@
 
 if [[ -f /install/.couchpotato.lock ]]; then
     if [[ -f /etc/systemd/system/couchpotato@.service ]]; then
+        if ! apt-cache show python2.7-dev > /dev/null 2>&1; then
+            echo_warn "python2.7 is not available on this release, skipping the legacy CouchPotato migration."
+            exit 0
+        fi
         echo_progress_start "Updating CouchPotato"
 
         codename=$(lsb_release -cs)

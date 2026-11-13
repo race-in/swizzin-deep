@@ -3,6 +3,10 @@
 if [[ -f /install/.headphones.lock ]]; then
     user=$(cut -d: -f1 < /root/.master.info)
     if [[ -d /home/${user}/.headphones ]]; then
+        if ! apt-cache show python2.7-dev > /dev/null 2>&1; then
+            echo_warn "python2.7 is not available on this release, skipping the legacy Headphones migration."
+            exit 0
+        fi
         echo_progress_start "Updating Headphones to use python virtualenv"
         active=$(systemctl is-active headphones)
         codename=$(lsb_release -cs)

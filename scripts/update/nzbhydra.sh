@@ -2,6 +2,10 @@
 
 if [[ -f /install/.nzbhydra.lock ]]; then
     if [[ -f /etc/systemd/system/nzbhydra@.service ]]; then
+        if ! apt-cache show python2.7-dev > /dev/null 2>&1; then
+            echo_warn "python2.7 is not available on this release, skipping the legacy NZBHydra migration."
+            exit 0
+        fi
         echo_progress_start "Updating NZBHydra to use a venv"
         user=$(cut -d: -f1 < /root/.master.info)
         codename=$(lsb_release -cs)
