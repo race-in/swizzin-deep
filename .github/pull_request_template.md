@@ -21,13 +21,13 @@
 
 ## Checklist
 <!-- Please note that we also require you to check the CONTRIBUTORS.md file, this is just a short list-->
-- [ ] Branch was made off the `develop` branch and the PR is targetting the `develop` branch
+- [ ] Branch was made off the default branch and the PR is targetting the default branch
 - [ ] Docs have been made OR are not necessary
     - PR link: 
 - [ ] Changes to panel have been made OR are not necessary
     - PR link: 
 - [ ] Code conforms to project structure [(See more)](https://swizzin.ltd/dev/structure)
-- [ ] Prints to terminal are handled [(See more)](https://github.com/swizzin/swizzin/blob/master/CONTRIBUTING.md#printing-into-the-terminal)
+- [ ] Prints to terminal are handled [(See more)](https://github.com/race-in/swizzin-deep/blob/HEAD/CONTRIBUTING.md#printing-into-the-terminal)
 - [ ] I have commented my code, particularly in hard-to-understand areas
 - [ ] Testing was done
    - [ ] Tests created or no new tests necessary

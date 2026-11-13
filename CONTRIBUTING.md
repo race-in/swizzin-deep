@@ -1,7 +1,7 @@
 # TL;DR:
 
-1. Familiarize yourself with the documentation and code available at [swizzin Dev Docs](https://swizzin.ltd/dev/).
-1. Make sure your PRs are from and targeted to the `develop` branch.
+1. Familiarize yourself with the documentation and code available at [swizzin Dev Docs](https://swizzin.ltd/dev/intro).
+1. Make sure your PRs are from and targeted to the default branch.
 1. PRs should meet specific criteria, including a completed checklist
     - If your PR doesn't meet the criteria, mark it as "Draft PR" and optionally prepend the title with `WIP:`.
 1. Follow the 4-space indentation style in bash code, use `shellcheck` to catch errors, and add helpful comments for reusable code.
@@ -18,12 +18,12 @@
 # Contributing guidelines
 Here are a couple things to take into account when contributing to swizzin.
 
-There is a large amount of further documentation and guidance available in our docs https://swizzin.ltd/dev/. You are expected to familiarise yourself with the documentation and the code.
+There is a large amount of further documentation and guidance available in our docs https://swizzin.ltd/dev/intro. You are expected to familiarise yourself with the documentation and the code.
 
 In case anything is not clear, we're always happy to explain and teach why/how these things are done; feel free to come talk to us in our Discord.
 
-## Merging against the `develop` branch
-As we use the git flow, please make sure to make your PRs from the `develop` branch, and target the `develop` branch for the PRs.
+## Merging against the default branch
+Please make sure to make your PRs from the default branch, and target the default branch for the PRs.
 
 Changes will make it to the master in releases.
 

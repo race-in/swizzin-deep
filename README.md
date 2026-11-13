@@ -1,12 +1,12 @@
 ![swizzin](http://i.imgur.com/JZlDKP1.png)
 
-[![CodeFactor](https://www.codefactor.io/repository/github/liaralabs/swizzin/badge)](https://www.codefactor.io/repository/github/liaralabs/swizzin) [![Discord](https://img.shields.io/discord/577667871727943696?logo=discord&logoColor=white)](https://discord.gg/sKjs9UM)  ![GitHub](https://img.shields.io/github/license/liaralabs/swizzin) ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/liaralabs/swizzin) ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/liaralabs/swizzin)
+[![GitHub license](https://img.shields.io/github/license/race-in/swizzin-deep)](https://github.com/race-in/swizzin-deep/blob/HEAD/LICENSE) ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/race-in/swizzin-deep) ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/race-in/swizzin-deep)
 
 # 3.15.0 Stable
 
 [website](https://swizzin.ltd) \| [docs](https://swizzin.ltd/getting-started) \| [discord](https://discord.gg/bDFqAUF)
 
-Please use [Discord](https://discord.gg/bDFqAUF) for all community functions, and [GitHub discussions](https://github.com/swizzin/swizzin/discussions) for feature requests and to raise issues.
+Please use [Discord](https://discord.gg/bDFqAUF) for all community functions, and [GitHub discussions](https://github.com/race-in/swizzin-deep/discussions) for feature requests and to raise issues.
 
 ## What is swizzin?
 Swizzin is a light, modular seedbox solution that can be installed on Debian 11/12 or Ubuntu 20.04/22.04/24.04. The QuickBox package repo has been ported over for your installing pleasure, including the panel -- if you so choose!
@@ -24,12 +24,12 @@ You can see what that looks like here:
 
 Using `wget`:
 ```shell
-bash <(wget -qO - s5n.sh) && . ~/.bashrc
+bash <(wget -qO - https://raw.githubusercontent.com/race-in/swizzin-deep/HEAD/setup.sh) && . ~/.bashrc
 ```
 
 Using `curl`:
 ```shell
-bash <(curl -sL s5n.sh) && . ~/.bashrc
+bash <(curl -sL https://raw.githubusercontent.com/race-in/swizzin-deep/HEAD/setup.sh) && . ~/.bashrc
 ```
 
 ### Make sure you are root
@@ -52,18 +52,18 @@ There's a whole bunch of options for the setup.sh to achieve custom/unattended s
 
 Want to use your local swizzin clone instead of cloning upstream? Use the `--local` flag!
 ```bash
-git clone https://github.com/<your-fork>/swizzin.git
-sudo bash swizzin/setup.sh --local
+git clone https://github.com/race-in/swizzin-deep.git
+sudo bash swizzin-deep/setup.sh --local
 ```
 
 Want to specify the user and their password? And the packages to have installed? Use the `--user` and `--pass` flags, and add packages as arguments!
 ```bash
-bash <(curl -sL git.io/swizzin) --unattend qbittorrent nginx panel --user tester --pass test1234
+bash <(curl -sL https://raw.githubusercontent.com/race-in/swizzin-deep/HEAD/setup.sh) --unattend qbittorrent nginx panel --user tester --pass test1234
 ```
 
 Want something a bit more complex, specify package install variables, don't want a super long command to type, and store the configuration? Use the `--env` flag with your custom `env` file! (see the [unattended.example.env](unattended.example.env) file for an example)
 ```bash
-bash <(curl -sL git.io/swizzin) --env /path/to/your/env/file/here.env
+bash <(curl -sL https://raw.githubusercontent.com/race-in/swizzin-deep/HEAD/setup.sh) --env /path/to/your/env/file/here.env
 ```
 
 ### Supported Operating Systems

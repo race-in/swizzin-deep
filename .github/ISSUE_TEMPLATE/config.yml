@@ -1,14 +1,14 @@
 blank_issues_enabled: false
 contact_links:
   - name: Documentation
-    url: https://swizzin.ltd/docs
+    url: https://swizzin.ltd/getting-started
     about: "READ FIRST: you might find an answer to your question."
   - name: "Troubleshooting Guide"
-    url: https://swizzin.ltd/docs/guides/troubleshooting
+    url: https://swizzin.ltd/guides/troubleshooting
     about: "Please make sure to follow these steps before submitting a bug."
   - name: "GitHub Discussions"
-    url: https://github.com/liaralabs/swizzin/discussions
+    url: https://github.com/race-in/swizzin-deep/discussions
     about: Please ask and answer non-bug-related questions here.
   - name: "Swizzin Discord"
-    url: https://discord.gg/sKjs9UM
+    url: https://discord.gg/bDFqAUF
     about: Chat with us!
