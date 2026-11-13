@@ -15,7 +15,7 @@ function npm_install() {
         npm_update
     fi
 
-    if [[ ! $(command -v npm) ]]; then
+    if ! command -v npm > /dev/null 2>&1; then
         echo_progress_start "Installing npm"
         apt_install nodejs build-essential
         echo_progress_done "Npm installed"
@@ -42,6 +42,7 @@ function npm_update() {
 function yarn_install() {
     npm_install
     echo_progress_start "Installing yarn"
-    npm install --quiet --global yarn >> $log 2>&1
+    # shellcheck disable=SC2154 # log is set by box/globals.sh
+    npm install --quiet --global yarn >> "$log" 2>&1
     echo_progress_done "Yarn installed"
 }

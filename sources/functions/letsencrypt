@@ -12,12 +12,13 @@ function le_vsftpd_hook() {
             else
                 defaulthostDir="${defaulthost}"
             fi
+            # shellcheck disable=SC1090 # acme.sh generated host config; path is dynamic
             . /root/.acme.sh/"${defaulthostDir}"/"${defaulthost}".conf || {
                 echo_warn "vsftpd could not find certificate for ${defaulthost}. Certificate will not be installed."
                 return 1
             }
-            sed -i "s#rsa_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem#rsa_cert_file=/etc/nginx/ssl/"${defaulthost}"/fullchain.pem#g" /etc/vsftpd.conf
-            sed -i "s#rsa_private_key_file=/etc/ssl/private/ssl-cert-snakeoil.key#rsa_private_key_file=/etc/nginx/ssl/"${defaulthost}"/key.pem#g" /etc/vsftpd.conf
+            sed -i "s#rsa_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem#rsa_cert_file=/etc/nginx/ssl/${defaulthost}/fullchain.pem#g" /etc/vsftpd.conf
+            sed -i "s#rsa_private_key_file=/etc/ssl/private/ssl-cert-snakeoil.key#rsa_private_key_file=/etc/nginx/ssl/${defaulthost}/key.pem#g" /etc/vsftpd.conf
             if [[ -z ${Le_PostHook} ]]; then
                 BASE64CMD=$(echo -n "systemctl restart vsftpd" | base64 -w 0)
                 sed -i "s/Le_PostHook=.*/Le_PostHook='__ACME_BASE64__START_${BASE64CMD}__ACME_BASE64__END_'/g" /root/.acme.sh/"${defaulthostDir}"/"${defaulthost}".conf
@@ -47,6 +48,7 @@ function le_znc_hook() {
             else
                 defaulthostDir="${defaulthost}"
             fi
+            # shellcheck disable=SC1090 # acme.sh generated host config; path is dynamic
             . /root/.acme.sh/"${defaulthostDir}"/"${defaulthost}".conf || {
                 echo_warn "znc could not find certificate for ${defaulthost}. Certificate will not be installed."
                 return 1

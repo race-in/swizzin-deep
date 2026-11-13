@@ -18,6 +18,7 @@ function qui_download_latest() {
         exit 1
     }
 
+    # shellcheck disable=SC2154 # log is set by box/globals.sh
     if ! curl "$latest" -L -o "/tmp/qui.tar.gz" >> "$log" 2>&1; then
         echo_error "Download failed, exiting"
         exit 1

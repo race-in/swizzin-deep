@@ -2,8 +2,12 @@
 
 function _download() {
     echo_progress_start "Downloading install script"
-    cd /tmp
-    wget https://nzbget.com/download/nzbget-latest-bin-linux.run >> $log 2>&1
+    cd /tmp || {
+        echo_error "Could not change directory to /tmp"
+        return 1
+    }
+    # shellcheck disable=SC2154 # log is set by box/globals.sh
+    wget https://nzbget.com/download/nzbget-latest-bin-linux.run >> "$log" 2>&1
     echo_progress_done
 }
 

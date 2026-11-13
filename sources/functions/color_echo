@@ -9,26 +9,41 @@ export width_cap="140"             # Applies when full-width is false. If termin
 export strip_ansi_from_log="false" # Whether the log should keep ansi escape characters (colors, etc) or not to ensure human readability
 
 # colours
-export red=$(tput setaf 1 || tput AF 1)
-export green=$(tput setaf 2 || tput AF 2)
-export yellow=$(tput setaf 3 || tput AF 3)
-export blue=$(tput setaf 4 || tput AF 4)
-export magenta=$(tput setaf 5 || tput AF 5)
-export cyan=$(tput setaf 6 || tput AF 6)
+red=$(tput setaf 1 || tput AF 1)
+export red
+green=$(tput setaf 2 || tput AF 2)
+export green
+yellow=$(tput setaf 3 || tput AF 3)
+export yellow
+blue=$(tput setaf 4 || tput AF 4)
+export blue
+magenta=$(tput setaf 5 || tput AF 5)
+export magenta
+cyan=$(tput setaf 6 || tput AF 6)
+export cyan
 
 # reset
-export nc="$(tput sgr0)"
+nc=$(tput sgr0)
+export nc
 
 # modifiers
-export bold=$(tput bold || tput md) # Start boldrbold="\e[21m"
-export dim=$(tput dim)              # Start dim
+bold=$(tput bold || tput md) # Start boldrbold="\e[21m"
+export bold
+dim=$(tput dim) # Start dim
+export dim
 export rdim="\e[22m"
-export under=$(tput smul || tput us)   # Start under
-export runder=$(tput rmul || tput ue)  # End   under
-export italic=$(tput sitm || tput ZH)  # Start italic
-export eitalic=$(tput ritm || tput ZR) # End   italic
-export stout=$(tput smso || tput so)   # Start stand-out
-export estout=$(tput rmso || tput se)  # End stand-out
+under=$(tput smul || tput us) # Start under
+export under
+runder=$(tput rmul || tput ue) # End   under
+export runder
+italic=$(tput sitm || tput ZH) # Start italic
+export italic
+eitalic=$(tput ritm || tput ZR) # End   italic
+export eitalic
+stout=$(tput smso || tput so) # Start stand-out
+export stout
+estout=$(tput rmso || tput se) # End stand-out
+export estout
 # resetAllModes="\e[21m\e[22m\e[24m\e[25m\e[27m\e[28m"
 
 ring_the_bell() {

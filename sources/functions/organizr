@@ -8,6 +8,7 @@ organizr_formkey() {
 
 organizr_adduser() {
     formKey=$(organizr_formkey)
+    # shellcheck disable=SC2154 # log is set by box/globals.sh
     curl --location --request POST 'https://127.0.0.1/organizr/api/v2/users' \
         --header 'content-type: application/x-www-form-urlencoded' \
         --header 'charset: UTF-8' \
@@ -17,5 +18,5 @@ organizr_adduser() {
         --data-urlencode "email=$2" \
         --data-urlencode "password=$3" \
         --data-urlencode "formKey=${formKey}" \
-        -sk >> $log 2>&1
+        -sk >> "$log" 2>&1
 }

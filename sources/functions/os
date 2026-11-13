@@ -7,6 +7,7 @@
 # - `debian`
 # - `raspbian`
 _os_distro() {
+    # shellcheck disable=SC1091 # /etc/os-release is provided by the OS
     source /etc/os-release
     printf '%s' "$ID"
 }
@@ -22,6 +23,7 @@ export -f _os_distro
 # - `jammy`
 # - etc.
 _os_codename() {
+    # shellcheck disable=SC1091 # /etc/os-release is provided by the OS
     source /etc/os-release
     printf '%s' "$VERSION_CODENAME"
 }

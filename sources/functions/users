@@ -8,9 +8,9 @@ function _get_user_password() {
 
     for file in $(find /root/ -maxdepth 1 -name '*.info' | sort); do
         if [[ -f $file ]]; then
-            user_in_file=$(cat $file | cut -d: -f1)
+            user_in_file=$(cat "$file" | cut -d: -f1)
             if [ "$user_in_file" = "$user_to_get" ]; then
-                password="$(cat $file | cut -d: -f2)"
+                password="$(cat "$file" | cut -d: -f2)"
                 break
             fi
         fi
@@ -137,7 +137,6 @@ function password_check() {
 
 # Will recurse while $user isn't set or isn't valid
 function username_check() {
-    ui="$ui"
     if [ "$SETUP_USER" = "true" ]; then
         ui="whiptail"
     fi
@@ -162,7 +161,7 @@ function username_check() {
     # Check reserved usernames
     badnames=("swizzin" "admin" "www-data" "root" "cydrex" "sudo" "user" "users")
     # Reserving usernames from the names of apps in install folder
-    badnames+=($(find /etc/swizzin/scripts/install/ -type f -printf '%f\n' | cut -d. -f1))
+    mapfile -t -O "${#badnames[@]}" badnames < <(find /etc/swizzin/scripts/install/ -type f -printf '%f\n' | cut -d. -f1)
     #shellcheck disable=SC2199,SC2076
     if [[ " ${badnames[@]} " =~ " ${user} " ]]; then
         error_message+="$user is a not an allowed username -- please use something else.\n"

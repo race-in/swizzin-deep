@@ -1,8 +1,11 @@
 #!/bin/bash
 
-export distribution=$(lsb_release -is)
-export release=$(lsb_release -rs)
-export codename=$(lsb_release -cs)
+distribution=$(lsb_release -is)
+export distribution
+release=$(lsb_release -rs)
+export release
+codename=$(lsb_release -cs)
+export codename
 
 function whiptail_rtorrent() {
     if [[ -z $rtorrentver ]] && [[ -z $1 ]] && [[ -z $RTORRENT_VERSION ]]; then
@@ -23,50 +26,50 @@ function whiptail_rtorrent() {
             exit 1
         }
 
-        set_rtorrent_version $function
+        set_rtorrent_version "$function"
     elif [[ -n $RTORRENT_VERSION ]]; then
-        set_rtorrent_version $RTORRENT_VERSION
+        set_rtorrent_version "$RTORRENT_VERSION"
     fi
 }
 
 function set_rtorrent_version() {
     case $1 in
-        0.9.6 | '0.9.6')
+        0.9.6)
             export rtorrentver='0.9.6'
             export libtorrentver='0.13.6'
             ;;
 
-        0.9.7 | '0.9.7')
+        0.9.7)
             export rtorrentver='0.9.7'
             export libtorrentver='0.13.7'
             ;;
 
-        0.9.8 | '0.9.8')
+        0.9.8)
             export rtorrentver='0.9.8'
             export libtorrentver='0.13.8'
             ;;
 
-        0.10.0 | '0.10.0')
+        0.10.0)
             export rtorrentver='0.10.0'
             export libtorrentver='0.14.0'
             ;;
 
-        0.15.1 | '0.15.1')
+        0.15.1)
             export rtorrentver='0.15.1'
             export libtorrentver='0.15.1'
             ;;
 
-        0.15.3 | '0.15.3')
+        0.15.3)
             export rtorrentver='0.15.3'
             export libtorrentver='0.15.3'
             ;;
 
-        0.15.5 | '0.15.5')
+        0.15.5)
             export rtorrentver='0.15.5'
             export libtorrentver='0.15.5'
             ;;
 
-        Repo | 'Repo')
+        Repo)
             export rtorrentver='repo'
             export libtorrentver='repo'
             ;;
@@ -80,22 +83,23 @@ function set_rtorrent_version() {
 
 function configure_rtorrent() {
     # Link time optimizations for 4 plus threads
-    if [ $(nproc) -ge 4 ]; then
-        export rtorrentflto="-flto=$(nproc)"
+    if [ "$(nproc)" -ge 4 ]; then
+        rtorrentflto="-flto=$(nproc)"
+        export rtorrentflto
     else
         export rtorrentflto=""
     fi
     # pipe optimizations for 512MB plus memory
     memory=$(awk '/MemAvailable/ {printf( "%.f\n", $2 / 1024 )}' /proc/meminfo)
-    if [[ $memory > 512 ]]; then
+    if [[ $memory -gt 512 ]]; then
         export rtorrentpipe="-pipe"
     else
         export rtorrentpipe=""
     fi
     # GCC optimization level for program compilation
-    if [ $(nproc) -le 1 ]; then
+    if [ "$(nproc)" -le 1 ]; then
         export rtorrentlevel="-O1"
-    elif [ $(nproc) -ge 8 ]; then
+    elif [ "$(nproc)" -ge 8 ]; then
         export rtorrentlevel="-O3"
     else
         export rtorrentlevel="-O2"
@@ -108,25 +112,39 @@ function depends_rtorrent() {
     dstat automake libtool libcppunit-dev libssl-dev pkg-config libcurl4-openssl-dev
     libsigc++-2.0-dev unzip curl libncurses5-dev yasm fontconfig libfontconfig1
     libfontconfig1-dev mediainfo autoconf-archive'
+        # shellcheck disable=SC2086  # intentional split: apt_install takes a package list
         apt_install $APT
 
+        # shellcheck source=sources/functions/fpm
         . /etc/swizzin/sources/functions/fpm
         install_fpm
     else
         APT='screen zip unzip bc mediainfo curl'
+        # shellcheck disable=SC2086  # intentional split: apt_install takes a package list
         apt_install $APT
     fi
 
     # mktorrent from source
-    cd /tmp
-    curl -sL https://github.com/Rudde/mktorrent/archive/v1.1.zip -o mktorrent.zip >> $log 2>&1
+    cd /tmp || {
+        echo_error "Cannot cd to /tmp"
+        return 1
+    }
+    # shellcheck disable=SC2154  # log is set by box/globals.sh
+    curl -sL https://github.com/Rudde/mktorrent/archive/v1.1.zip -o mktorrent.zip >> "$log" 2>&1
+    # shellcheck source=sources/functions/utils
     . /etc/swizzin/sources/functions/utils
     rm_if_exists "/tmp/mktorrent"
-    unzip -d mktorrent -j mktorrent.zip >> $log 2>&1
-    cd mktorrent
-    make -j$(nproc) CC=gcc CFLAGS="-w ${rtorrentflto} ${rtorrentpipe} ${rtorrentlevel}" >> $log 2>&1
-    make install PREFIX=/usr >> $log 2>&1
-    cd /tmp
+    unzip -d mktorrent -j mktorrent.zip >> "$log" 2>&1
+    cd mktorrent || {
+        echo_error "Cannot cd to mktorrent"
+        return 1
+    }
+    make -j"$(nproc)" CC=gcc CFLAGS="-w ${rtorrentflto} ${rtorrentpipe} ${rtorrentlevel}" >> "$log" 2>&1
+    make install PREFIX=/usr >> "$log" 2>&1
+    cd /tmp || {
+        echo_error "Cannot cd to /tmp"
+        return 1
+    }
     rm -rf mktorrent*
 }
 
@@ -137,29 +155,40 @@ function build_xmlrpc-c() {
 }
 
 function build_xmlrpc-c_old() {
-    cd "/tmp"
+    cd "/tmp" || {
+        echo_error "Cannot cd to /tmp"
+        return 1
+    }
+    # shellcheck source=sources/functions/utils
     . /etc/swizzin/sources/functions/utils
     rm_if_exists "/tmp/xmlrpc-c"
     rm_if_exists "/tmp/dist/xmlrpc-c "
-    svn checkout svn://svn.code.sf.net/p/xmlrpc-c/code/stable@3212 /tmp/xmlrpc-c >> $log 2>&1
-    cd /tmp/xmlrpc-c
-    cp -rf /etc/swizzin/sources/patches/rtorrent/xmlrpc-config.guess config.guess >> $log 2>&1
-    cp -rf /etc/swizzin/sources/patches/rtorrent/xmlrpc-config.sub config.sub >> $log 2>&1
-    ./configure --prefix=/usr --disable-cplusplus --disable-wininet-client --disable-libwww-client --disable-abyss-server --disable-cgi-server >> $log 2>&1 || {
+    svn checkout svn://svn.code.sf.net/p/xmlrpc-c/code/stable@3212 /tmp/xmlrpc-c >> "$log" 2>&1
+    cd /tmp/xmlrpc-c || {
+        echo_error "Cannot cd to /tmp/xmlrpc-c"
+        return 1
+    }
+    cp -rf /etc/swizzin/sources/patches/rtorrent/xmlrpc-config.guess config.guess >> "$log" 2>&1
+    cp -rf /etc/swizzin/sources/patches/rtorrent/xmlrpc-config.sub config.sub >> "$log" 2>&1
+    ./configure --prefix=/usr --disable-cplusplus --disable-wininet-client --disable-libwww-client --disable-abyss-server --disable-cgi-server >> "$log" 2>&1 || {
         echo_error "Something went wrong while configuring xmlrpc"
         exit 1
     }
+    # shellcheck disable=SC1090  # version.mk is generated by the build, not in the repo
     source <(sed 's/ //g' version.mk)
     VERSION=$XMLRPC_MAJOR_RELEASE.$XMLRPC_MINOR_RELEASE.$XMLRPC_POINT_RELEASE
-    make -j$(nproc) CFLAGS="-w ${rtorrentlevel} ${rtorrentflto} ${rtorrentpipe}" >> $log 2>&1
-    make DESTDIR=/tmp/dist/xmlrpc-c install >> $log 2>&1 || {
+    make -j"$(nproc)" CFLAGS="-w ${rtorrentlevel} ${rtorrentflto} ${rtorrentpipe}" >> "$log" 2>&1
+    make DESTDIR=/tmp/dist/xmlrpc-c install >> "$log" 2>&1 || {
         echo_error "Something went wrong while making xmlrpc"
         exit 1
     }
     mkdir -p /root/dist
-    fpm -f -C /tmp/dist/xmlrpc-c -p /root/dist/xmlrpc-c_VERSION.deb -s dir -t deb -n xmlrpc-c --version ${VERSION} --description "xmlrpc-c compiled by swizzin" > /dev/null 2>&1
-    dpkg -i /root/dist/xmlrpc-c_${VERSION}.deb >> $log 2>&1
-    cd /tmp
+    fpm -f -C /tmp/dist/xmlrpc-c -p /root/dist/xmlrpc-c_VERSION.deb -s dir -t deb -n xmlrpc-c --version "${VERSION}" --description "xmlrpc-c compiled by swizzin" > /dev/null 2>&1
+    dpkg -i "/root/dist/xmlrpc-c_${VERSION}.deb" >> "$log" 2>&1
+    cd /tmp || {
+        echo_error "Cannot cd to /tmp"
+        return 1
+    }
     rm -rf xmlrpc-c
     rm -rf /tmp/dist/xmlrpc-c
 }
@@ -173,6 +202,7 @@ function build_libtorrent_rakshasa() {
 }
 
 function build_libtorrent_rakshasa_new() {
+    # shellcheck source=sources/functions/utils
     . /etc/swizzin/sources/functions/utils
     download_libtorrent_rakshasa
     auto_patch_libtorrent_rakshasa
@@ -181,12 +211,12 @@ function build_libtorrent_rakshasa_new() {
         patch -p1 < /etc/swizzin/sources/patches/rtorrent/libtorrent-0.15.3-resume-fix.patch >> "$log" 2>&1
     fi
 
-    autoreconf -vfi >> $log 2>&1
-    ./configure --prefix=/usr --enable-aligned >> $log 2>&1 || {
+    autoreconf -vfi >> "$log" 2>&1
+    ./configure --prefix=/usr --enable-aligned >> "$log" 2>&1 || {
         echo_error "Something went wrong while configuring libtorrent"
         exit 1
     }
-    make -j$(nproc) CXXFLAGS="-w ${rtorrentlevel} ${rtorrentflto} ${rtorrentpipe}" >> $log 2>&1 || {
+    make -j"$(nproc)" CXXFLAGS="-w ${rtorrentlevel} ${rtorrentflto} ${rtorrentpipe}" >> "$log" 2>&1 || {
         echo_error "Something went wrong while making libtorrent"
         exit 1
     }
@@ -195,6 +225,7 @@ function build_libtorrent_rakshasa_new() {
 }
 
 function build_libtorrent_rakshasa_old() {
+    # shellcheck source=sources/functions/utils
     . /etc/swizzin/sources/functions/utils
     download_libtorrent_rakshasa
     auto_patch_libtorrent_rakshasa
@@ -212,12 +243,12 @@ function build_libtorrent_rakshasa_old() {
             patch -p1 < /etc/swizzin/sources/patches/rtorrent/throttle-fix-0.13.6.patch >> "$log" 2>&1
         fi
     fi
-    ./autogen.sh >> $log 2>&1
-    ./configure --prefix=/usr --enable-aligned >> $log 2>&1 || {
+    ./autogen.sh >> "$log" 2>&1
+    ./configure --prefix=/usr --enable-aligned >> "$log" 2>&1 || {
         echo_error "Something went wrong while configuring libtorrent"
         exit 1
     }
-    make -j$(nproc) CXXFLAGS="-w ${rtorrentlevel} ${rtorrentflto} ${rtorrentpipe}" >> $log 2>&1 || {
+    make -j"$(nproc)" CXXFLAGS="-w ${rtorrentlevel} ${rtorrentflto} ${rtorrentpipe}" >> "$log" 2>&1 || {
         echo_error "Something went wrong while making libtorrent"
         exit 1
     }
@@ -227,19 +258,27 @@ function build_libtorrent_rakshasa_old() {
 
 function download_libtorrent_rakshasa() {
     libtorrentloc="https://github.com/rakshasa/libtorrent/archive/refs/tags/v${libtorrentver}.tar.gz"
-    cd "/tmp"
+    cd "/tmp" || {
+        echo_error "Cannot cd to /tmp"
+        return 1
+    }
+    # shellcheck source=sources/functions/utils
     . /etc/swizzin/sources/functions/utils
     rm_if_exists "/tmp/libtorrent"
     mkdir /tmp/libtorrent
-    curl -sL ${libtorrentloc} -o /tmp/libtorrent-${libtorrentver}.tar.gz
-    tar -xf /tmp/libtorrent-${libtorrentver}.tar.gz -C /tmp/libtorrent --strip-components=1 >> $log 2>&1
-    cd /tmp/libtorrent >> $log 2>&1
+    curl -sL "${libtorrentloc}" -o "/tmp/libtorrent-${libtorrentver}.tar.gz"
+    tar -xf "/tmp/libtorrent-${libtorrentver}.tar.gz" -C /tmp/libtorrent --strip-components=1 >> "$log" 2>&1
+    cd /tmp/libtorrent >> "$log" 2>&1 || {
+        echo_error "Cannot cd to /tmp/libtorrent"
+        return 1
+    }
 }
 
 function auto_patch_libtorrent_rakshasa() {
+    # shellcheck source=sources/functions/utils
     . /etc/swizzin/sources/functions/utils
     if [[ -f /root/libtorrent-rakshasa-${libtorrentver}.patch ]]; then
-        patch -p1 < /root/libtorrent-rakshasa-${libtorrentver}.patch >> ${log} 2>&1 || {
+        patch -p1 < "/root/libtorrent-rakshasa-${libtorrentver}.patch" >> "${log}" 2>&1 || {
             echo _error "Something went wrong when patching libtorrent-rakshasa"
             exit 1
         }
@@ -251,13 +290,17 @@ function auto_patch_libtorrent_rakshasa() {
 
 function install_libtorrent_rakshasa() {
     VERSION=$libtorrentver
+    # shellcheck source=sources/functions/utils
     . /etc/swizzin/sources/functions/utils
     rm_if_exists "/tmp/dist/libtorrent-rakshasa"
-    make DESTDIR=/tmp/dist/libtorrent-rakshasa install >> $log 2>&1
+    make DESTDIR=/tmp/dist/libtorrent-rakshasa install >> "$log" 2>&1
     mkdir -p /root/dist
-    fpm -f -C /tmp/dist/libtorrent-rakshasa -p /root/dist/libtorrent-rakshasa_VERSION.deb -s dir -t deb -n libtorrent-rakshasa --version ${VERSION} --description "libtorrent-rakshasa compiled by swizzin" > /dev/null 2>&1
-    dpkg -i /root/dist/libtorrent-rakshasa_${VERSION}.deb >> $log 2>&1
-    cd /tmp
+    fpm -f -C /tmp/dist/libtorrent-rakshasa -p /root/dist/libtorrent-rakshasa_VERSION.deb -s dir -t deb -n libtorrent-rakshasa --version "${VERSION}" --description "libtorrent-rakshasa compiled by swizzin" > /dev/null 2>&1
+    dpkg -i "/root/dist/libtorrent-rakshasa_${VERSION}.deb" >> "$log" 2>&1
+    cd /tmp || {
+        echo_error "Cannot cd to /tmp"
+        return 1
+    }
     rm -rf /tmp/dist/libtorrent-rakshasa
     rm -rf libtorrent*
 }
@@ -271,6 +314,7 @@ function build_rtorrent() {
 }
 
 function build_rtorrent_new() {
+    # shellcheck source=sources/functions/utils
     . /etc/swizzin/sources/functions/utils
     download_rtorrent
     auto_patch_rtorrent
@@ -279,20 +323,20 @@ function build_rtorrent_new() {
         patch -p1 < /etc/swizzin/sources/patches/rtorrent/1310-scgi-fix.patch >> "$log" 2>&1
     fi
 
-    autoreconf -vfi >> $log 2>&1
+    autoreconf -vfi >> "$log" 2>&1
 
     if [[ ${rtorrentver} == "0.10.0" ]]; then
-        ./configure --prefix=/usr --with-xmlrpc-c >> $log 2>&1 || {
+        ./configure --prefix=/usr --with-xmlrpc-c >> "$log" 2>&1 || {
             echo_error "Something went wrong while configuring rtorrent 0.10.0 with xmlrpc-c"
             exit 1
         }
     else
-        ./configure --prefix=/usr --with-xmlrpc-tinyxml2 >> $log 2>&1 || {
+        ./configure --prefix=/usr --with-xmlrpc-tinyxml2 >> "$log" 2>&1 || {
             echo_error "Something went wrong while configuring rtorrent with tinyxml2"
             exit 1
         }
     fi
-    make -j$(nproc) CXXFLAGS="-w ${rtorrentlevel} ${rtorrentflto} ${rtorrentpipe}" >> $log 2>&1 || {
+    make -j"$(nproc)" CXXFLAGS="-w ${rtorrentlevel} ${rtorrentflto} ${rtorrentpipe}" >> "$log" 2>&1 || {
         echo_error "Something went wrong while making rtorrent"
         exit 1
     }
@@ -310,6 +354,7 @@ function build_rtorrent_old() {
         patch -p1 < /etc/swizzin/sources/patches/rtorrent/rtorrent-ml-fixes-0.9.8.patch >> "$log" 2>&1
     fi
     #apply lockfile-fix to all rtorrents
+    # shellcheck disable=SC2129  # one log append per patch keeps the interleaved comments meaningful
     patch -p1 < /etc/swizzin/sources/patches/rtorrent/lockfile-fix.patch >> "$log" 2>&1
     #apply xmlrpc-fix to all rtorrents
     patch -p1 < /etc/swizzin/sources/patches/rtorrent/xmlrpc-fix.patch >> "$log" 2>&1
@@ -325,12 +370,12 @@ function build_rtorrent_old() {
         patch -p1 < /etc/swizzin/sources/patches/rtorrent/rtorrent-0.9.6.patch >> "$log" 2>&1
         stdc="-std=c++11"
     fi
-    ./autogen.sh >> $log 2>&1
-    ./configure --prefix=/usr --with-xmlrpc-c >> $log 2>&1 || {
+    ./autogen.sh >> "$log" 2>&1
+    ./configure --prefix=/usr --with-xmlrpc-c >> "$log" 2>&1 || {
         echo_error "Something went wrong while configuring rtorrent"
         exit 1
     }
-    make -j$(nproc) CXXFLAGS="-w ${rtorrentlevel} ${rtorrentflto} ${rtorrentpipe} ${stdc}" >> $log 2>&1 || {
+    make -j"$(nproc)" CXXFLAGS="-w ${rtorrentlevel} ${rtorrentflto} ${rtorrentpipe} ${stdc}" >> "$log" 2>&1 || {
         echo_error "Something went wrong while making rtorrent"
         exit 1
     }
@@ -340,19 +385,27 @@ function build_rtorrent_old() {
 
 function download_rtorrent() {
     rtorrentloc="https://github.com/rakshasa/rtorrent/archive/refs/tags/v${rtorrentver}.tar.gz"
-    cd "/tmp"
+    cd "/tmp" || {
+        echo_error "Cannot cd to /tmp"
+        return 1
+    }
+    # shellcheck source=sources/functions/utils
     . /etc/swizzin/sources/functions/utils
     rm_if_exists "/tmp/rtorrent*"
     mkdir /tmp/rtorrent
-    curl -sL ${rtorrentloc} -o /tmp/rtorrent-${rtorrentver}.tar.gz
-    tar -xzf /tmp/rtorrent-${rtorrentver}.tar.gz -C /tmp/rtorrent --strip-components=1 >> $log 2>&1
-    cd /tmp/rtorrent
+    curl -sL "${rtorrentloc}" -o "/tmp/rtorrent-${rtorrentver}.tar.gz"
+    tar -xzf "/tmp/rtorrent-${rtorrentver}.tar.gz" -C /tmp/rtorrent --strip-components=1 >> "$log" 2>&1
+    cd /tmp/rtorrent || {
+        echo_error "Cannot cd to /tmp/rtorrent"
+        return 1
+    }
 }
 
 function auto_patch_rtorrent() {
+    # shellcheck source=sources/functions/utils
     . /etc/swizzin/sources/functions/utils
     if [[ -f /root/rtorrent-${rtorrentver}.patch ]]; then
-        patch -p1 < /root/rtorrent-${rtorrentver}.patch >> ${log} 2>&1 || {
+        patch -p1 < "/root/rtorrent-${rtorrentver}.patch" >> "${log}" 2>&1 || {
             echo _error "Something went wrong when patching rTorrent"
             exit 1
         }
@@ -364,17 +417,21 @@ function auto_patch_rtorrent() {
 
 function install_rtorrent() {
     VERSION=$rtorrentver
+    # shellcheck source=sources/functions/utils
     . /etc/swizzin/sources/functions/utils
     rm_if_exists "/tmp/dist/rtorrent"
-    make DESTDIR=/tmp/dist/rtorrent install >> $log 2>&1
+    make DESTDIR=/tmp/dist/rtorrent install >> "$log" 2>&1
     mkdir -p /root/dist
-    fpm -f -C /tmp/dist/rtorrent -p /root/dist/rtorrent_VERSION.deb -s dir -t deb -n rtorrent --version ${VERSION} --description "rtorrent compiled by swizzin" > /dev/null 2>&1
-    dpkg -i /root/dist/rtorrent_${VERSION}.deb >> $log 2>&1
-    cd "/tmp"
-    ldconfig >> $log 2>&1
-    rm -rf rtorrent* >> $log 2>&1
+    fpm -f -C /tmp/dist/rtorrent -p /root/dist/rtorrent_VERSION.deb -s dir -t deb -n rtorrent --version "${VERSION}" --description "rtorrent compiled by swizzin" > /dev/null 2>&1
+    dpkg -i "/root/dist/rtorrent_${VERSION}.deb" >> "$log" 2>&1
+    cd "/tmp" || {
+        echo_error "Cannot cd to /tmp"
+        return 1
+    }
+    ldconfig >> "$log" 2>&1
+    rm -rf rtorrent* >> "$log" 2>&1
     rm -rf /tmp/dist/rtorrent
-    apt-mark hold rtorrent >> ${log} 2>&1
+    apt-mark hold rtorrent >> "${log}" 2>&1
 }
 
 function rtorrent_apt() {
@@ -385,23 +442,34 @@ function remove_rtorrent() {
     toclean=(rtorrent libtorrent-rakshasa)
     repo=$(dpkg -l | grep -P libtorrent'\d+' | awk '{print $2}' | cut -d: -f1)
     if [[ -n $repo ]]; then
-        toclean+=($repo)
+        toclean+=("$repo")
     fi
     for c in ${toclean[@]}; do
         # TODO add option to pass extra flags
-        apt-get remove -y -q --allow-change-held-packages $c >> $log 2>&1
+        apt-get remove -y -q --allow-change-held-packages "$c" >> "$log" 2>&1
     done
-    apt-get autoremove -y >> $log 2>&1
+    apt-get autoremove -y >> "$log" 2>&1
 }
 
 function remove_rtorrent_legacy() {
     rm -rf /usr/bin/rtorrent
-    cd /tmp
+    cd /tmp || {
+        echo_error "Cannot cd to /tmp"
+        return 1
+    }
     git clone https://github.com/rakshasa/libtorrent.git libtorrent >> /dev/null 2>&1
-    cd libtorrent
-    ./autogen.sh >> $log 2>&1
-    ./configure --prefix=/usr >> $log 2>&1
-    make uninstall >> $log 2>&1
-    cd -
+    cd libtorrent || {
+        echo_error "Cannot cd to libtorrent"
+        return 1
+    }
+    # shellcheck disable=SC2129  # autogen/configure/make are one sequential chain, logged separately
+    ./autogen.sh >> "$log" 2>&1
+    ./configure --prefix=/usr >> "$log" 2>&1
+    make uninstall >> "$log" 2>&1
+    # shellcheck disable=SC2103  # returning to the caller's directory is intentional here
+    cd - || {
+        echo_error "Cannot cd back to previous directory"
+        return 1
+    }
     rm -rf /tmp/libtorrent
 }

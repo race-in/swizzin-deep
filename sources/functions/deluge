@@ -49,7 +49,7 @@ function whiptail_deluge_downupgrade() {
         if [[ $DELUGE_VERSION == "repo" ]]; then
             function=$(get_candidate_version deluge)
         fi
-        if echo $function | grep -q Deluge; then
+        if echo "$function" | grep -q Deluge; then
             dverup=$(echo "$function" | sed 's|Deluge ||g' | cut -d. -f1)
         else
             dverup=$(echo "$function" | cut -d. -f1)
@@ -178,11 +178,11 @@ function skip_libtorrent_deluge() {
     if command -v deluged > /dev/null 2>&1; then
         libtorrent_current_version=$(deluged --version | grep libtorrent | grep -oP '\d+\.\d+\.\d+(\.\d+)?' || echo "0.0.0.0")
         if [[ -n $libtorrent_maximum_version ]]; then
-            if dpkg --compare-versions ${libtorrent_current_version} ge ${libtorrent_minimum_version} && dpkg --compare-versions ${libtorrent_current_version} le ${libtorrent_maximum_version} && whiptail_skip_libtorrent_rasterbar; then
+            if dpkg --compare-versions "${libtorrent_current_version}" ge "${libtorrent_minimum_version}" && dpkg --compare-versions "${libtorrent_current_version}" le "${libtorrent_maximum_version}" && whiptail_skip_libtorrent_rasterbar; then
                 return
             fi
         else
-            if dpkg --compare-versions ${libtorrent_current_version} ge ${libtorrent_minimum_version} && whiptail_skip_libtorrent_rasterbar; then
+            if dpkg --compare-versions "${libtorrent_current_version}" ge "${libtorrent_minimum_version}" && whiptail_skip_libtorrent_rasterbar; then
                 return
             fi
         fi
@@ -195,17 +195,21 @@ function build_libtorrent_deluge() {
     booststrap
     echo 'using gcc : : : <cflags>"-O3 -march=native -std=c++17" <cxxflags>"-O3 -march=native -std=c++17" ;' > /root/user-config.jam
     echo "using python : ${pythonmajor} : /usr/bin/${pythonver} : /usr/include/python${pythonmajor} : /usr/lib/python${pythonmajor} ;" >> /root/user-config.jam
-    apt_install ${pythonver}-dev libssl-dev
+    apt_install "${pythonver}-dev" libssl-dev
     rm_if_exists /tmp/libtorrent
 
-    export "${libtorrent_branch}"
+    export libtorrent_branch
     libtorrent_clone
 
-    cd /tmp/libtorrent
+    cd /tmp/libtorrent || {
+        echo_error "Cannot cd to /tmp/libtorrent"
+        return 1
+    }
     VERSION=$(grep -oP "VERSION\ = \K\d\.\d\.\d+" Jamfile)
 
     if [[ -f /root/libtorrent-${libtorrent_branch}.patch ]]; then
-        patch -p1 < /root/libtorrent-${libtorrent_branch}.patch >> ${log} 2>&1 || {
+        # shellcheck disable=SC2154  # log is a global set by sources/globals.sh
+        patch -p1 < "/root/libtorrent-${libtorrent_branch}.patch" >> "${log}" 2>&1 || {
             echo _error "Something went wrong when patching libtorrent"
             exit 1
         }
@@ -221,7 +225,7 @@ function build_libtorrent_deluge() {
         RC_1_1)
             sed -i 's|, (arg("seconds") = 0, arg("tracker_idx") = -1, arg("flags") = 0|, (arg("seconds") = 0, arg("tracker_idx") = -1, arg("flags") = 1|g' bindings/python/src/torrent_handle.cpp
             #Patch the Jamfile to allow 1.1 to use stage_module
-            patch -p1 < /etc/swizzin/sources/patches/deluge/Jamfile-RC_1_1.patch >> ${log} 2>&1
+            patch -p1 < /etc/swizzin/sources/patches/deluge/Jamfile-RC_1_1.patch >> "${log}" 2>&1
             ;;
         RC_1_2)
             sed -i 's|, (arg("seconds") = 0, arg("tracker_idx") = -1, arg("flags") = reannounce_flags_t{}))|, (arg("seconds") = 0, arg("tracker_idx") = -1, arg("flags") = 1))|g' bindings/python/src/torrent_handle.cpp
@@ -229,21 +233,27 @@ function build_libtorrent_deluge() {
             ;;
         *) ;;
     esac
-    cd /tmp/libtorrent/bindings/python
-    /opt/boost_${BOOST_VERSION}/b2 -j$(nproc) python=${pythonmajor} crypto=${cryptography} variant=release libtorrent-link=static boost-link=static install_module python-install-path=/tmp/dist/libtorrent-python/usr/local/lib/python${pythonmajor}/dist-packages >> ${log} 2>&1
+    cd /tmp/libtorrent/bindings/python || {
+        echo_error "Cannot cd to /tmp/libtorrent/bindings/python"
+        return 1
+    }
+    "/opt/boost_${BOOST_VERSION}/b2" -j"$(nproc)" python="${pythonmajor}" crypto="${cryptography}" variant=release libtorrent-link=static boost-link=static install_module python-install-path=/tmp/dist/libtorrent-python/usr/local/lib/python"${pythonmajor}"/dist-packages >> "${log}" 2>&1
     tag=" static with c++17 O3 march=native"
     mkdir -p /root/dist
-    fpm -f -C /tmp/dist/libtorrent-python -p /root/dist/${python}-libtorrent_VERSION.deb -s dir -t deb -n ${python}-libtorrent --version ${VERSION} --description "Libtorrent rasterbar python binding compiled by swizzin$tag" >> ${log} 2>&1 || {
+    fpm -f -C /tmp/dist/libtorrent-python -p "/root/dist/${python}-libtorrent_VERSION.deb" -s dir -t deb -n "${python}-libtorrent" --version "${VERSION}" --description "Libtorrent rasterbar python binding compiled by swizzin$tag" >> "${log}" 2>&1 || {
         echo_error "Error packaging ${python}-libtorrent. Setup will exit"
         exit 1
     }
-    cd /tmp
+    cd /tmp || {
+        echo_error "Cannot cd to /tmp"
+        return 1
+    }
     rm_if_exists /tmp/libtorrent
     rm_if_exists /tmp/dist
     echo_log_only "Checking python bindings for libtorrent"
-    dpkg -r python-libtorrent >> ${log} 2>&1
-    dpkg -r python3-libtorrent >> ${log} 2>&1
-    dpkg -i /root/dist/${python}-libtorrent_${VERSION}.deb >> ${log} 2>&1 || {
+    dpkg -r python-libtorrent >> "${log}" 2>&1
+    dpkg -r python3-libtorrent >> "${log}" 2>&1
+    dpkg -i "/root/dist/${python}-libtorrent_${VERSION}.deb" >> "${log}" 2>&1 || {
         echo_error "Libtorrent python binding could not be installed. Setup will not proceed"
         exit 1
     }
@@ -282,36 +292,45 @@ function build_deluge() {
             exit 1
             ;;
     esac
+    # shellcheck disable=SC2086  # LIST is an intentionally split package list
     apt_install --no-recommends $LIST
 
     if [[ -n $PIP ]]; then
+        # shellcheck source=sources/functions/pyenv
         . /etc/swizzin/sources/functions/pyenv
         python_getpip
         for p in $PIP; do
-            pip install $p >> $log 2>&1
+            pip install "$p" >> "$log" 2>&1
         done
     fi
 
     rm_if_exists /tmp/deluge
-    git clone -b ${deluge_git_branch} git://deluge-torrent.org/deluge.git /tmp/deluge >> "${log}" 2>&1 || {
+    git clone -b "${deluge_git_branch}" git://deluge-torrent.org/deluge.git /tmp/deluge >> "${log}" 2>&1 || {
         echo_warn "Cloning Deluge from deluge-torrent.org failed, attempting github backup."
-        git clone -b ${deluge_git_branch} https://github.com/deluge-torrent/deluge/ >> "${log}" 2>&1 || {
+        git clone -b "${deluge_git_branch}" https://github.com/deluge-torrent/deluge/ >> "${log}" 2>&1 || {
             echo_error "Cloning Deluge from github failed. Setup will now exit"
             exit 1
         }
     }
-    cd /tmp/deluge
+    cd /tmp/deluge || {
+        echo_error "Cannot cd to /tmp/deluge"
+        return 1
+    }
     VERSION=$(git describe | cut -d- -f2)
     sed -i 's/-dev//g' setup.cfg
     mkdir -p /root/dist
+    # shellcheck disable=SC2086  # args is an intentionally split option string
     fpm ${args} --python-fix-dependencies --python-bin=${pythonver} --python-package-name-prefix=${pythonver} --python-setup-py-arguments=--install-layout=deb -n deluge-common -f -p /root/dist/deluge-common_VERSION.deb --description "Deluge compiled by swizzin" -s python -t deb /tmp/deluge/setup.py >> "${log}" 2>&1
-    dpkg -i /root/dist/deluge-common_${VERSION}.deb >> "${log}" 2>&1
+    dpkg -i "/root/dist/deluge-common_${VERSION}.deb" >> "${log}" 2>&1
     if [[ ${DELUGE_VERSION} == 1.3-stable ]]; then
         #update-tracker is built into v2 (update_tracker)
         cp /etc/swizzin/scripts/deluge.UpdateTracker.py "/usr/lib/${distver}/dist-packages/deluge/ui/console/commands/update-tracker.py"
         chmod 644 /usr/lib/${distver}/dist-packages/deluge/ui/console/commands/update-tracker.py
     fi
-    cd /tmp
+    cd /tmp || {
+        echo_error "Cannot cd to /tmp"
+        return 1
+    }
     rm -rf /tmp/deluge
     apt-mark hold deluge-common >> "${log}" 2>&1
     echo_progress_done "Deluge installed"
@@ -320,20 +339,20 @@ function build_deluge() {
 function apt_install_deluge() {
     cleanup=(python3-libtorrent python-libtorrent)
     for a in ${cleanup[@]}; do
-        if dpkg -l | grep $a | grep swizzin > /dev/null 2>&1; then
+        if dpkg -l | grep "$a" | grep swizzin > /dev/null 2>&1; then
             echo_info "Removing conflicting package: $a."
-            dpkg -r $a > /dev/null 2>&1
+            dpkg -r "$a" > /dev/null 2>&1
         fi
     done
     if [[ -f /install/.deluge.lock ]]; then
         whiptail_deluge_downupgrade
         dver=$(deluged -v | grep deluged | grep -oP '\d+\.\d+\.\d+')
-        if [[ $dver == 1.3* ]] && dpkg --compare-versions $(get_candidate_version deluge-common) ge 2.0.0; then
+        if [[ $dver == 1.3* ]] && dpkg --compare-versions "$(get_candidate_version deluge-common)" ge 2.0.0; then
             echo_info "Major version upgrade detected. User-data will be backed-up."
-            users=($(_get_user_list))
+            mapfile -t users < <(_get_user_list)
             for user in "${users[@]}"; do
                 echo_info "'/home/${user}/.config/deluge' -> '/home/$user/.config/deluge.$$'"
-                cp -a /home/${user}/.config/deluge /home/${user}/.config/deluge.$$
+                cp -a "/home/${user}/.config/deluge" "/home/${user}/.config/deluge.$$"
             done
         fi
         apt_remove --purge ^deluge.*
@@ -366,22 +385,23 @@ function dweb_check() {
     systemctl daemon-reload
     dvermajor=$(deluged -v | grep deluged | grep -oP '\d+\.\d+\.\d+' | cut -d. -f1)
     for u in ${users[@]}; do
-        localpass=$(grep localclient /home/$u/.config/deluge/auth | cut -d: -f2)
+        localpass=$(grep localclient "/home/$u/.config/deluge/auth" | cut -d: -f2)
         DUDID=$(${pythonver} /usr/local/bin/swizzin/deluge.addHost.py)
-        DPORT=$(grep daemon_port /home/$u/.config/deluge/core.conf | grep -oP '\d+')
+        DPORT=$(grep daemon_port "/home/$u/.config/deluge/core.conf" | grep -oP '\d+')
 
         case $dvermajor in
             1)
                 SUFFIX=.1.2
                 ;;
+            *) ;;
         esac
         if [[ -f /home/${u}/.config/deluge/hostlist.conf ]]; then
-            rm /home/${u}/.config/deluge/hostlist.conf
+            rm "/home/${u}/.config/deluge/hostlist.conf"
         fi
         if [[ -f /home/${u}/.config/deluge/hostlist.conf.1.2 ]]; then
-            rm /home/${u}/.config/deluge/hostlist.conf.1.2
+            rm "/home/${u}/.config/deluge/hostlist.conf.1.2"
         fi
-        cat > /home/${u}/.config/deluge/hostlist.conf${SUFFIX} << DHL
+        cat > "/home/${u}/.config/deluge/hostlist.conf${SUFFIX}" << DHL
 {
   "file": 3,
   "format": 1
@@ -397,8 +417,8 @@ function dweb_check() {
   ]
 }
 DHL
-        sed -i "s/\"default_daemon\":.*/\"default_daemon\": \"${DUDID}\",/g" /home/${u}/.config/deluge/web.conf
-        chown -R $u: /home/${u}/.config/deluge
+        sed -i "s/\"default_daemon\":.*/\"default_daemon\": \"${DUDID}\",/g" "/home/${u}/.config/deluge/web.conf"
+        chown -R "${u}:" "/home/${u}/.config/deluge"
     done
 }
 
@@ -410,56 +430,66 @@ function ltconfig() {
             ltcver=0.3.1
             py=-py2.7
             if ls /etc/skel/.config/deluge/plugins/ltConfig-2* > /dev/null 2>&1; then rm -f /etc/skel/.config/deluge/plugins/ltConfig-2*; fi
-            if ls /home/${u}/.config/deluge/plugins/ltConfig-2* > /dev/null 2>&1; then rm -f /home/${u}/.config/deluge/plugins/ltConfig-2*; fi
+            if ls "/home/${u}/.config/deluge/plugins/ltConfig-2"* > /dev/null 2>&1; then rm -f "/home/${u}/.config/deluge/plugins/ltConfig-2"*; fi
             ;;
         2.*)
             ltcver=2.0.0
             py=
             if [[ -f /etc/skel/.config/deluge/plugins/ltConfig-0.3.1-py2.7.egg ]]; then rm -f /etc/skel/.config/deluge/plugins/ltConfig-0.3.1-py2.7.egg; fi
-            if [[ -f /home/${u}/.config/deluge/plugins/ltConfig-0.3.1-py2.7.egg ]]; then rm -f /home/${u}/.config/deluge/plugins/ltConfig-0.3.1-py2.7.egg; fi
+            if [[ -f /home/${u}/.config/deluge/plugins/ltConfig-0.3.1-py2.7.egg ]]; then rm -f "/home/${u}/.config/deluge/plugins/ltConfig-0.3.1-py2.7.egg"; fi
             ;;
+        *) ;;
     esac
     if [[ ! -f /etc/skel/.config/deluge/plugins/ltConfig-${ltcver}${py}.egg ]]; then
-        cd /etc/skel/.config/deluge/plugins/
-        wget -q https://github.com/ratanakvlun/deluge-ltconfig/releases/download/v${ltcver}/ltConfig-${ltcver}${py}.egg
+        cd /etc/skel/.config/deluge/plugins/ || {
+            echo_error "Cannot cd to /etc/skel/.config/deluge/plugins/"
+            return 1
+        }
+        wget -q "https://github.com/ratanakvlun/deluge-ltconfig/releases/download/v${ltcver}/ltConfig-${ltcver}${py}.egg"
     fi
-    mkdir -p /home/${u}/.config/deluge/plugins
+    mkdir -p "/home/${u}/.config/deluge/plugins"
     if [[ ! -f /home/${u}/.config/deluge/plugins/ltConfig-${ltcver}${py}.egg ]]; then
-        cd /home/${u}/.config/deluge/plugins/
-        wget -q https://github.com/ratanakvlun/deluge-ltconfig/releases/download/v${ltcver}/ltConfig-${ltcver}${py}.egg
-        chown $u: /home/${u}/.config/deluge/plugins/ltConfig-${ltcver}${py}.egg
+        cd "/home/${u}/.config/deluge/plugins/" || {
+            echo_error "Cannot cd to /home/${u}/.config/deluge/plugins/"
+            return 1
+        }
+        wget -q "https://github.com/ratanakvlun/deluge-ltconfig/releases/download/v${ltcver}/ltConfig-${ltcver}${py}.egg"
+        chown "${u}:" "/home/${u}/.config/deluge/plugins/ltConfig-${ltcver}${py}.egg"
     fi
-    if grep -q user_agent /home/${u}/.config/deluge/ltconfig.conf > /dev/null 2>&1; then
-        sed -i "s/Deluge[^\"]*/Deluge ${dver}/g" /home/${u}/.config/deluge/ltconfig.conf
+    if grep -q user_agent "/home/${u}/.config/deluge/ltconfig.conf" > /dev/null 2>&1; then
+        sed -i "s/Deluge[^\"]*/Deluge ${dver}/g" "/home/${u}/.config/deluge/ltconfig.conf"
     fi
 }
 
 function _dconf() {
     for u in "${users[@]}"; do
         echo_progress_start "Configuring Deluge for $u"
-        if [[ ${u} == ${master} ]]; then
+        # shellcheck disable=SC2154  # master is set by scripts/install/deluge.sh
+        if [[ "${u}" == "${master}" ]]; then
             pass=$(cut -d: -f2 < /root/.master.info)
         else
-            pass=$(cut -d: -f2 < /root/${u}.info)
+            pass=$(cut -d: -f2 < "/root/${u}.info")
         fi
         n=$RANDOM
         DPORT=$((n % 59000 + 10024))
         DWSALT=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 32 | head -n 1)
         localpass=$(tr -dc 'a-f0-9' < /dev/urandom | fold -w 40 | head -n 1)
-        if $(command -v python2.7 > /dev/null 2>&1); then
+        if command -v python2.7 > /dev/null 2>&1; then
             pythonversion=python2.7
-        elif $(command -v python3 > /dev/null 2>&1); then
+        elif command -v python3 > /dev/null 2>&1; then
             pythonversion=python3
         fi
-        DWP=$(${pythonversion} ${local_packages}/deluge.Userpass.py ${pass} ${DWSALT})
-        DUDID=$(${pythonversion} ${local_packages}/deluge.addHost.py)
+        # shellcheck disable=SC2154  # local_packages is set by scripts/install/deluge.sh
+        DWP=$(${pythonversion} "${local_packages}/deluge.Userpass.py" "${pass}" "${DWSALT}")
+        DUDID=$(${pythonversion} "${local_packages}/deluge.addHost.py")
         # -- Secondary awk command -- #
         #DPORT=$(awk -v min=59000 -v max=69024 'BEGIN{srand(); print int(min+rand()*(max-min+1))}')
         DWPORT=$(shuf -i 10001-11000 -n 1)
         ltconfig
-        chmod 755 /home/${u}/.config
-        chmod 755 /home/${u}/.config/deluge
-        cat > /home/${u}/.config/deluge/core.conf << DC
+        chmod 755 "/home/${u}/.config"
+        chmod 755 "/home/${u}/.config/deluge"
+        # shellcheck disable=SC2154  # ip is set by scripts/install/deluge.sh
+        cat > "/home/${u}/.config/deluge/core.conf" << DC
   {
     "file": 1,
     "format": 1
@@ -564,7 +594,7 @@ function _dconf() {
     "listen_interface": "${ip}"
   }
 DC
-        cat > /home/${u}/.config/deluge/web.conf << DWC
+        cat > "/home/${u}/.config/deluge/web.conf" << DWC
 {
   "file": 1,
   "format": 1
@@ -595,8 +625,9 @@ DWC
             1)
                 SUFFIX=.1.2
                 ;;
+            *) ;;
         esac
-        cat > /home/${u}/.config/deluge/hostlist.conf${SUFFIX} << DHL
+        cat > "/home/${u}/.config/deluge/hostlist.conf${SUFFIX}" << DHL
 {
   "file": 1,
   "format": 1
@@ -613,16 +644,16 @@ DWC
 }
 DHL
 
-        echo "${u}:${pass}:10" > /home/${u}/.config/deluge/auth
-        echo "localclient:${localpass}:10" >> /home/${u}/.config/deluge/auth
-        chmod 600 /home/${u}/.config/deluge/auth
-        chown -R ${u}:${u} /home/${u}/.config/
-        mkdir /home/${u}/dwatch
-        chown ${u}: /home/${u}/dwatch
-        mkdir -p /home/${u}/torrents/deluge
-        chown ${u}: /home/${u}/torrents
-        chown ${u}: /home/${u}/torrents/deluge
-        usermod -a -G ${u} www-data 2>> "$log"
+        echo "${u}:${pass}:10" > "/home/${u}/.config/deluge/auth"
+        echo "localclient:${localpass}:10" >> "/home/${u}/.config/deluge/auth"
+        chmod 600 "/home/${u}/.config/deluge/auth"
+        chown -R "${u}:${u}" "/home/${u}/.config/"
+        mkdir "/home/${u}/dwatch"
+        chown "${u}:" "/home/${u}/dwatch"
+        mkdir -p "/home/${u}/torrents/deluge"
+        chown "${u}:" "/home/${u}/torrents"
+        chown "${u}:" "/home/${u}/torrents/deluge"
+        usermod -a -G "${u}" www-data 2>> "$log"
         echo_progress_done "Configured for $u"
     done
 }
@@ -666,10 +697,10 @@ WantedBy=multi-user.target
 DW
     fi
     for u in "${users[@]}"; do
-        systemctl enable -q deluged@${u} 2>&1 | tee -a $log
-        systemctl enable -q deluge-web@${u} 2>&1 | tee -a $log
-        systemctl start deluged@${u}
-        systemctl start deluge-web@${u}
+        systemctl enable -q "deluged@${u}" 2>&1 | tee -a "$log"
+        systemctl enable -q "deluge-web@${u}" 2>&1 | tee -a "$log"
+        systemctl start "deluged@${u}"
+        systemctl start "deluge-web@${u}"
     done
 
     echo_progress_done "Services added and started"
@@ -686,8 +717,8 @@ function cleanup_deluge() {
     echo_progress_start "Performing cleanup"
     toclean=(deluge-common deluge-web deluged deluge-console)
     for p in ${toclean[@]}; do
-        if dpkg -l | grep $p > /dev/null 2>&1; then
-            dpkg -r $p > /dev/null 2>&1
+        if dpkg -l | grep "$p" > /dev/null 2>&1; then
+            dpkg -r "$p" > /dev/null 2>&1
         fi
     done
     echo_progress_done

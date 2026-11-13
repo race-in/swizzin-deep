@@ -8,7 +8,8 @@ function rutorrent_install() {
         echo_progress_start "Cloning ruTorrent"
         # Get current stable ruTorrent version
         release=$(git ls-remote --tags --refs https://github.com/novik/ruTorrent.git | awk '{sub("refs/tags/", ""); print $2 }' | grep -v beta | sort -Vr | head -n1)
-        git clone --recurse-submodules --depth 1 -b ${release} https://github.com/Novik/ruTorrent.git /srv/rutorrent >> "$log" 2>&1 || {
+        # shellcheck disable=SC2154 # log is set by box/globals.sh
+        git clone --recurse-submodules --depth 1 -b "${release}" https://github.com/Novik/ruTorrent.git /srv/rutorrent >> "$log" 2>&1 || {
             echo_error "Failed to clone ruTorrent"
             exit 1
         }
@@ -28,11 +29,12 @@ function rutorrent_install() {
     sed -i 's/pathToCreatetorrent = '\'\''/pathToCreatetorrent = '\''\/usr\/bin\/mktorrent'\''/' /srv/rutorrent/plugins/create/conf.php
     sed -i "s/\$pathToExternals\['sox'\] = ''/\$pathToExternals\['sox'\] = '\/usr\/bin\/sox'/g" /srv/rutorrent/plugins/spectrogram/conf.php
 
+    # shellcheck source=sources/functions/utils
     . /etc/swizzin/sources/functions/utils
     install_rar
 
     if [[ ! -d /srv/rutorrent/plugins/filemanager ]]; then
-        git clone https://github.com/nelu/rutorrent-filemanager /srv/rutorrent/plugins/filemanager >> ${log} 2>&1 || {
+        git clone https://github.com/nelu/rutorrent-filemanager /srv/rutorrent/plugins/filemanager >> "${log}" 2>&1 || {
             echo_error "git of file-manager plugin to main plugins seems to have failed"
         }
         rutorrent_fm_config
@@ -46,14 +48,14 @@ function rutorrent_install() {
     fi
 
     if [[ ! -d /srv/rutorrent/plugins/geoip2 ]]; then
-        git clone https://github.com/Micdu70/geoip2-rutorrent /srv/rutorrent/plugins/geoip2 >> ${log} 2>&1 || {
+        git clone https://github.com/Micdu70/geoip2-rutorrent /srv/rutorrent/plugins/geoip2 >> "${log}" 2>&1 || {
             echo_error "git of geoip2 plugin to main plugins seems to have failed"
         }
     fi
 
     echo_progress_done "Plugins downloaded"
 
-    if [[ -f /install/.quota.lock ]] && [[ -z $(grep quota /srv/rutorrent/plugins/diskspace/action.php) ]]; then
+    if [[ -f /install/.quota.lock ]] && ! grep -q quota /srv/rutorrent/plugins/diskspace/action.php; then
         rutorrent_fix_quota
     fi
 
@@ -230,11 +232,11 @@ RIN
 }
 
 function rutorrent_user_config() {
-    users=($(_get_user_list))
+    mapfile -t users < <(_get_user_list)
     for user in "${users[@]}"; do
         if [[ ! -f /srv/rutorrent/conf/users/${user}/config.php ]]; then
-            mkdir -p /srv/rutorrent/conf/users/${user}/
-            cat > /srv/rutorrent/conf/users/${user}/config.php << RUU
+            mkdir -p "/srv/rutorrent/conf/users/${user}/"
+            cat > "/srv/rutorrent/conf/users/${user}/config.php" << RUU
 <?php
 \$topDirectory = '/home/${user}';
 \$scgi_port = 0;
@@ -246,7 +248,7 @@ RUU
         fi
 
         if [[ ! -f /etc/nginx/apps/${user}.scgi.conf ]]; then
-            cat > /etc/nginx/apps/${user}.scgi.conf << RUC
+            cat > "/etc/nginx/apps/${user}.scgi.conf" << RUC
 location /${user} {
 include scgi_params;
 scgi_pass unix:/var/run/${user}/.rtorrent.sock;

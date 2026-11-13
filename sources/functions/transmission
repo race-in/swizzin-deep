@@ -56,6 +56,7 @@ function _install_transmission() {
             return 1
         else
             echo_progress_start "Adding Transmission PPA"
+            # shellcheck disable=SC2154 # log is set by box/globals.sh
             add-apt-repository ppa:transmissionbt/ppa -y >> "$log" 2>&1
             echo_progress_done "PPA Added"
         fi

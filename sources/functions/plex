@@ -2,7 +2,7 @@
 
 function getPref() {
     local key="$1"
-    grep -oP ''$key'="\K[^"]+' "/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Preferences.xml"
+    grep -oP "${key}"'="\K[^"]+' "/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Preferences.xml"
 }
 
 function setPref() {
@@ -23,13 +23,12 @@ function claimPlex() {
     if [[ -n $1 ]]; then
         claimtoken=$1
         echo_progress_start "Claiming plex server"
-        serial="$(getPref "MachineIdentifier")"
         clientId="$(getPref "ProcessedMachineIdentifier")"
         token="$(getPref "PlexOnlineToken")"
         if [ ! -z "${claimtoken}" ] && [ -z "${token}" ]; then
             echo_log_only "Attempting to obtain server token from claim token"
             loginInfo="$(curl -s -X POST \
-                -H 'X-Plex-Client-Identifier: '${clientId} \
+                -H 'X-Plex-Client-Identifier: '"${clientId}" \
                 -H 'X-Plex-Product: Plex Media Server' \
                 -H 'X-Plex-Version: 1.1' \
                 -H 'X-Plex-Provides: server' \
@@ -40,7 +39,7 @@ function claimPlex() {
                 "https://plex.tv/api/claim/exchange?token=${claimtoken}")"
             token="$(echo "$loginInfo" | sed -n 's/.*<authentication-token>\(.*\)<\/authentication-token>.*/\1/p')"
 
-            if [ "$token" ]; then
+            if [ -n "$token" ]; then
                 setPref "PlexOnlineToken" "${token}"
                 setPref "PublishServerOnPlexOnlineKey" "1"
                 echo_progress_done "Plex Media Server successfully claimed"

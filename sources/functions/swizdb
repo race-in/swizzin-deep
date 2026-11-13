@@ -39,6 +39,7 @@ _getswizdb() {
         return 1
     }
     echo_log_only "Output of key \"$key\""
+    # shellcheck disable=SC2154 # log is set by box/globals.sh
     cat "$path" | tee -a "$log"
     return "${PIPESTATUS[0]}"
 }
