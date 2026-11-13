@@ -16,7 +16,8 @@ if [[ -f /install/.wireguard.lock ]]; then
             apt_update
             echo_progress_start "Ensuring correct wireguard packages are installed"
             #This apt command must be called directly because we are overriding the currently installed unstable package to buster-backports
-            apt-get -y --allow-downgrades install wireguard/buster-backports wireguard-tools/buster-backports wireguard-dkms/buster-backports >> ${log} 2>&1
+            # shellcheck disable=SC2154 # log is set by box/globals.sh
+            apt-get -y --allow-downgrades install wireguard/buster-backports wireguard-tools/buster-backports wireguard-dkms/buster-backports >> "${log}" 2>&1
             echo_progress_done
         fi
     fi

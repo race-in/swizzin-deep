@@ -1,6 +1,6 @@
 #!/bin/bash
 
-users=($(cut -d: -f1 < /etc/htpasswd))
+mapfile -t users < <(cut -d: -f1 < /etc/htpasswd)
 master=$(cut -d: -f1 < /root/.master.info)
 distribution=$(lsb_release -is)
 
@@ -13,20 +13,20 @@ fi
 for u in "${users[@]}"; do
     if [[ $u = "$master" ]]; then continue; fi
     USER=${u^^}
-    if grep -q ${USER}CMNDS /etc/sudoers.d/$u; then
+    if grep -q "${USER}CMNDS" "/etc/sudoers.d/$u"; then
         echo_info "Fixing sudo permissions for $u"
-        sed -i "s/${USER}CMNDS/${USER}CMDS/g" /etc/sudoers.d/$u
+        sed -i "s/${USER}CMNDS/${USER}CMDS/g" "/etc/sudoers.d/$u"
     fi
 done
 
 for u in "${users[@]}"; do
     if [[ $u = "$master" ]]; then continue; fi
     USER=${u^^}
-    if grep -q flood /etc/sudoers.d/$u; then
+    if grep -q flood "/etc/sudoers.d/$u"; then
         :
     else
         echo_info "Adding flood sudo permissions for $u"
-        sed -i "s/${USER}CMDS = /${USER}CMDS = \/bin\/systemctl stop flood@${user}, \/bin\/systemctl restart flood@${user}, \/bin\/systemctl start flood@${user}, /g" /etc/sudoers.d/$u
+        sed -i "s/${USER}CMDS = /${USER}CMDS = \/bin\/systemctl stop flood@${u}, \/bin\/systemctl restart flood@${u}, \/bin\/systemctl start flood@${u}, /g" "/etc/sudoers.d/$u"
     fi
 done
 

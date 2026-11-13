@@ -6,25 +6,26 @@ if [[ -f /install/.couchpotato.lock ]]; then
 
         codename=$(lsb_release -cs)
         user=$(cut -d: -f1 < /root/.master.info)
-        isactive=$(systemctl is-active couchpotato@${user})
+        isactive=$(systemctl is-active "couchpotato@${user}")
         #shellcheck source=sources/functions/pyenv
         . /etc/swizzin/sources/functions/pyenv
-        systemctl disable -q --now couchpotato@${user} >> ${log} 2>&1
+        systemctl disable -q --now "couchpotato@${user}" >> "${log}" 2>&1
         if [[ $codename = "buster" ]]; then
             LIST='git python2.7-dev python-virtualenv virtualenv'
         else
             LIST='git python2.7-dev'
         fi
+        # shellcheck disable=SC2086 # LIST is a space-separated package list, splitting is intentional
         apt_install $LIST
 
         if [[ ! $codename = "buster" ]]; then
             python_getpip
         fi
-        python2_venv ${user} couchpotato
+        python2_venv "${user}" couchpotato
         /opt/.venv/couchpotato/bin/pip install pyOpenSSL lxml >> "${log}" 2>&1
-        chown -R ${user}: /opt/.venv/couchpotato
+        chown -R "${user}": /opt/.venv/couchpotato
 
-        mv /home/${user}/.couchpotato /opt/couchpotato
+        mv "/home/${user}/.couchpotato" /opt/couchpotato
         cat > /etc/systemd/system/couchpotato.service << CPSD
 [Unit]
 Description=CouchPotato
@@ -40,15 +41,15 @@ GuessMainPID=no
 [Install]
 WantedBy=multi-user.target
 CPSD
-        mkdir -p /home/${user}/.config/couchpotato
-        chown ${user}: /home/${user}/.config
-        chown ${user}: /home/${user}/.config/couchpotato
-        mv /opt/couchpotato/{cache,custom_plugins,database,db_backup,logs,settings.conf} /home/${user}/.config/couchpotato
+        mkdir -p "/home/${user}/.config/couchpotato"
+        chown "${user}": "/home/${user}/.config"
+        chown "${user}": "/home/${user}/.config/couchpotato"
+        mv /opt/couchpotato/{cache,custom_plugins,database,db_backup,logs,settings.conf} "/home/${user}/.config/couchpotato"
         rm /etc/systemd/system/couchpotato@.service
         systemctl daemon-reload
 
         if [[ $isactive == "active" ]]; then
-            systemctl enable -q --now couchpotato 2>&1 | tee -a $log
+            systemctl enable -q --now couchpotato 2>&1 | tee -a "$log"
         fi
         echo_progress_done
     fi

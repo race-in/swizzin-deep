@@ -9,7 +9,7 @@ killage() {
     echo
     echo "Due to internal restructuring please run \`box update\` again. You should only have to do this once."
     echo "Reason: $1"
-    kill -13 $(ps --pid $$ -oppid=)
+    kill -13 "$(ps --pid $$ -oppid=)"
     exit 1
 }
 if ! command -v apt_install > /dev/null 2>&1; then

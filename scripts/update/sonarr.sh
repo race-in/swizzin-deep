@@ -58,6 +58,7 @@ if [[ -f /install/.sonarr.lock ]]; then
                   libmono-system-xml-linq4.0-cil
                   libmono-system-xml4.0-cil
                   libmono-system4.0-cil'
+            # shellcheck disable=SC2086 # MONO is a whitespace-separated package list, splitting is intentional
             apt-mark auto ${MONO}
             echo_progress_done "Binaries removed"
 
@@ -169,7 +170,7 @@ if [[ -f /install/.sonarr.lock ]] && dpkg -l | grep sonarr | grep ^ii > /dev/nul
         exit 1
     fi
     echo_info "Moving config to '/home/${user}/.config/Sonarr'"
-    mv /home/${user}/.config/sonarr /home/${user}/.config/Sonarr
+    mv "/home/${user}/.config/sonarr" "/home/${user}/.config/Sonarr"
 
     #Remove comments
     sed -i '/^#/d' /etc/systemd/system/sonarr.service
@@ -205,6 +206,7 @@ if [[ -f /install/.sonarr.lock ]] && dpkg -l | grep sonarr | grep ^ii > /dev/nul
         sqlite3
         mediainfo'
 
+    # shellcheck disable=SC2086 # LIST is a whitespace-separated package list, splitting is intentional
     apt_install ${LIST}
 
     apt_remove --purge sonarr
@@ -220,7 +222,7 @@ if [[ -f /install/.sonarr.lock ]] && dpkg -l | grep sonarr | grep ^ii > /dev/nul
 
     #Update broken symlink to old service
     if [[ $isEnabled == "enabled" ]]; then
-        systemctl enable sonarr >> ${log} 2>&1
+        systemctl enable sonarr >> "${log}" 2>&1
     fi
     echo_progress_done
 fi

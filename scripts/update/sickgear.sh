@@ -4,24 +4,24 @@ if [[ -f /install/.sickgear.lock ]]; then
     if [[ -f /etc/systemd/system/sickgear@.service ]]; then
         echo_progress_start "Updating SickGear to use venv"
         user=$(cut -d: -f1 < /root/.master.info)
-        isactive=$(systemctl is-active sickgear@${user})
-        codename=$(lsb_release -cs)
+        isactive=$(systemctl is-active "sickgear@${user}")
 
         if [[ $isactive == "active" ]]; then
-            systemctl disable -q --now sickgear@${user}
+            systemctl disable -q --now "sickgear@${user}"
         fi
         if [[ ! -d /opt/.venv ]]; then
             mkdir -p /opt/.venv
-            chown ${user}: /opt/.venv
+            chown "${user}": /opt/.venv
         fi
 
         apt_install git-core openssl libssl-dev python3 python3-pip python3-dev python3-venv
         python3 -m venv /opt/.venv/sickgear
 
-        /opt/.venv/sickgear/bin/pip3 install lxml regex scandir soupsieve cheetah3 >> $log 2>&1
-        chown -R ${user}: /opt/.venv/sickgear
+        # shellcheck disable=SC2154 # log is set by box/globals.sh
+        /opt/.venv/sickgear/bin/pip3 install lxml regex scandir soupsieve cheetah3 >> "$log" 2>&1
+        chown -R "${user}": /opt/.venv/sickgear
 
-        mv /home/${user}/.sickgear /opt/sickgear
+        mv "/home/${user}/.sickgear" /opt/sickgear
 
         cat > /etc/systemd/system/sickgear.service << MSD
 [Unit]
@@ -41,7 +41,7 @@ MSD
         systemctl daemon-reload
         rm /etc/systemd/system/sickchill@.service
         if [[ $isactive == "active" ]]; then
-            systemctl enable -q --now sickgear 2>&1 | tee -a $log
+            systemctl enable -q --now sickgear 2>&1 | tee -a "$log"
         fi
         echo_progress_done
     fi

@@ -6,16 +6,21 @@ function update_nginx() {
         apt_remove nginx-extras
         apt_install nginx libnginx-mod-http-fancyindex
         apt_autoremove
-        rm $(ls -d /etc/nginx/modules-enabled/*.removed)
+        rm /etc/nginx/modules-enabled/*.removed
         systemctl reload nginx
     fi
     # Install missing nginx packages
     [[ $(lsb_release -cs) =~ ^(focal|buster|bullseye)$ ]] && geoip="php-geoip" || geoip=""
     LIST="php-fpm php-cli php-dev php-xml php-curl php-xmlrpc php-json php-mbstring php-opcache php-xml php-zip ${geoip}"
+    # shellcheck disable=SC2086 # LIST is a space-separated package list, splitting is intentional
     apt_install $LIST
     # Purge php7.0-fpm on all platforms
-    cd /etc/php
-    phpv=$(ls -d */ | cut -d/ -f1)
+    cd /etc/php || {
+        echo_error "Cannot cd to /etc/php"
+        return 1
+    }
+    # shellcheck disable=SC2012 # version dirs are plain names; find would skip symlinked versions
+    phpv=$(ls -d ./*/ | cut -d/ -f2)
     if [[ $phpv =~ 7\\.1 ]]; then
         if [[ $phpv =~ 7\\.0 ]]; then
             apt_remove --purge php7.0-fpm
@@ -38,9 +43,9 @@ function update_nginx() {
                 -e "s/;opcache.enable=0/opcache.enable=1/" \
                 -e "s/;opcache.memory_consumption=64/opcache.memory_consumption=128/" \
                 -e "s/;opcache.max_accelerated_files=2000/opcache.max_accelerated_files=4000/" \
-                -e "s/;opcache.revalidate_freq=2/opcache.revalidate_freq=240/" /etc/php/$version/fpm/php.ini
-            phpenmod -v $version opcache
-            sed -i 's/;env\[PATH\]/env[PATH]/g' /etc/php/$version/fpm/pool.d/www.conf
+                -e "s/;opcache.revalidate_freq=2/opcache.revalidate_freq=240/" "/etc/php/$version/fpm/php.ini"
+            phpenmod -v "$version" opcache
+            sed -i 's/;env\[PATH\]/env[PATH]/g' "/etc/php/$version/fpm/pool.d/www.conf"
             echo_progress_done
         fi
     done
@@ -52,20 +57,21 @@ function update_nginx() {
         echo_progress_done
     fi
 
-    fcgis=($(find /etc/nginx -type f -exec grep -l "fastcgi_pass unix:/run/php/" {} \;))
+    fcgis=()
+    mapfile -t fcgis < <(find /etc/nginx -type f -exec grep -l "fastcgi_pass unix:/run/php/" {} \;)
     err=()
     for f in ${fcgis[@]}; do
-        err+=($(grep -L "fastcgi_pass unix:/run/php/php${phpversion}-fpm.sock" $f))
+        err+=("$(grep -L "fastcgi_pass unix:/run/php/php${phpversion}-fpm.sock" "$f")")
     done
     for fix in ${err[@]}; do
         echo_progress_start "Updating PHP${phpversion} to use socket"
-        sed -i "s/fastcgi_pass .*/fastcgi_pass unix:\/run\/php\/php${phpversion}-fpm.sock;/g" $fix
+        sed -i "s/fastcgi_pass .*/fastcgi_pass unix:\/run\/php\/php${phpversion}-fpm.sock;/g" "$fix"
         echo_progress_done
     done
 
     if [[ ! -d /srv/fancyindex ]]; then
-        git clone https://github.com/Naereen/Nginx-Fancyindex-Theme/ /tmp/fancyindex >> $log 2>&1
-        mv /tmp/fancyindex/Nginx-Fancyindex-Theme-dark /srv/fancyindex >> $log 2>&1
+        git clone https://github.com/Naereen/Nginx-Fancyindex-Theme/ /tmp/fancyindex >> "$log" 2>&1
+        mv /tmp/fancyindex/Nginx-Fancyindex-Theme-dark /srv/fancyindex >> "$log" 2>&1
         rm -rf /tmp/fancyindex
     fi
 

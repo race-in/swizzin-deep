@@ -19,28 +19,30 @@ if [[ -f /install/.pyload.lock ]]; then
         echo_progress_start "Updating pyLoad to use pyenv"
         codename=$(lsb_release -cs)
         user=$(cut -d: -f1 < /root/.master.info)
-        isactive=$(systemctl is-active pyload@${user})
+        isactive=$(systemctl is-active "pyload@${user}")
         #shellcheck source=sources/functions/pyenv
         . /etc/swizzin/sources/functions/pyenv
-        systemctl disable -q --now pyload@${user} >> ${log} 2>&1
+        systemctl disable -q --now "pyload@${user}" >> "${log}" 2>&1
         if [[ $codename = "buster" ]]; then
             LIST='tesseract-ocr gocr rhino python2.7-dev python-pip virtualenv python-virtualenv libcurl4-openssl-dev sqlite3'
         else
             LIST='tesseract-ocr gocr rhino libcurl4-openssl-dev python2.7-dev sqlite3'
         fi
+        # shellcheck disable=SC2086 # LIST is a space-separated package list, splitting is intentional
         apt_install $LIST
 
         if [[ ! $codename = "buster" ]]; then
             python_getpip
         fi
 
-        python2_venv ${user} pyload
+        python2_venv "${user}" pyload
 
         PIP='wheel setuptools pycurl pycrypto tesseract pillow pyOpenSSL js2py feedparser beautifulsoup'
+        # shellcheck disable=SC2086 # PIP is a space-separated package list, splitting is intentional
         /opt/.venv/pyload/bin/pip install $PIP >> "${log}" 2>&1
-        chown -R ${user}: /opt/.venv/pyload
+        chown -R "${user}": /opt/.venv/pyload
 
-        mv /home/${user}/.pyload /opt/pyload
+        mv "/home/${user}/.pyload" /opt/pyload
         echo "/opt/pyload" > /opt/pyload/module/config/configdir
 
         cat > /etc/systemd/system/pyload.service << PYSD
@@ -59,7 +61,7 @@ PYSD
         systemctl daemon-reload
         rm /etc/systemd/system/pyload@.service
         if [[ $isactive == "active" ]]; then
-            systemctl enable -q --now pyload 2>&1 | tee -a $log
+            systemctl enable -q --now pyload 2>&1 | tee -a "${log}"
         fi
         echo_progress_done
     fi

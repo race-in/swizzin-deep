@@ -2,6 +2,7 @@
 # Nextcloud updates
 
 if [[ -f /install/.nextcloud.lock ]]; then
+    # shellcheck disable=SC2016 # nginx config pattern matched literally, expansion not wanted
     if ! grep -q 'set $path_info' /etc/nginx/apps/nextcloud.conf; then
         echo_progress_start "Updating Nextcloud nginx config"
         #shellcheck source=sources/functions/php

@@ -14,19 +14,21 @@ if [[ -f /install/.headphones.lock ]]; then
         else
             LIST='git python2.7-dev'
         fi
+        # shellcheck disable=SC2086 # LIST is a space-separated package list, splitting is intentional
         apt_install $LIST
 
         if [[ ! $codename = "buster" ]]; then
             python_getpip
         fi
 
-        python2_venv ${user} headphones
+        python2_venv "${user}" headphones
 
         PIP='wheel cheetah asn1'
+        # shellcheck disable=SC2086 # PIP is a space-separated package list, splitting is intentional
         /opt/.venv/headphones/bin/pip install $PIP >> "${log}" 2>&1
-        chown -R ${user}: /opt/.venv/headphones
+        chown -R "${user}": /opt/.venv/headphones
 
-        mv /home/${user}/.headphones /opt/headphones
+        mv "/home/${user}/.headphones" /opt/headphones
 
         cat > /etc/systemd/system/headphones.service << HEADSD
 [Unit]
@@ -49,7 +51,7 @@ HEADSD
         sed -i "s|/home/${user}/.headphones|/opt/headphones|g" /opt/headphones/config.ini
 
         if [[ $active == "active" ]]; then
-            systemctl enable -q --now headphones 2>&1 | tee -a $log
+            systemctl enable -q --now headphones 2>&1 | tee -a "$log"
         fi
     fi
     echo_progress_done

@@ -6,10 +6,13 @@ if [ -f /install/.rutorrent.lock ]; then
         find /srv/rutorrent/plugins/theme/themes/club-QuickBox -user root -exec chown www-data: {} \;
         cqbdir="/srv/rutorrent/plugins/theme/themes/club-QuickBox"
         sudo -u www-data git -C "$cqbdir" fetch
-        if [[ ! $(sudo -u www-data git -C "$cqbdir" rev-parse HEAD) == $(sudo -u www-data git -C "$cqbdir" rev-parse @{u}) ]]; then
+        if [[ ! $(sudo -u www-data git -C "$cqbdir" rev-parse HEAD) == $(sudo -u www-data git -C "$cqbdir" rev-parse "@{u}") ]]; then
             echo_progress_start "Updating rutorrent theme"
-            sudo -u www-data git -C "$cqbdir" reset HEAD --hard >> $log 2>&1
-            sudo -u www-data git -C "$cqbdir" pull >> $log 2>&1
+            # shellcheck disable=SC2024 # redirect to the root-owned swizzin log is intentional
+            # shellcheck disable=SC2154 # log is set by box/globals.sh
+            sudo -u www-data git -C "$cqbdir" reset HEAD --hard >> "$log" 2>&1
+            # shellcheck disable=SC2024 # redirect to the root-owned swizzin log is intentional
+            sudo -u www-data git -C "$cqbdir" pull >> "$log" 2>&1
             echo_progress_done
         fi
     fi
@@ -19,7 +22,9 @@ if [ -f /install/.rutorrent.lock ]; then
     if [[ -f /etc/nginx/apps/rutorrent.conf ]]; then
         #Fix fastcgi path_info being blank with certain circumstances under ruTorrent
         #Essentially, disabling the distro snippet and ignoring try_files
+        # shellcheck disable=SC2016 # nginx config patterns are literal, not shell expansions
         if grep -q '/srv\$fastcgi_script_name' /etc/nginx/apps/rutorrent.conf; then
+            # shellcheck disable=SC2016 # sed replacement is a literal nginx variable
             sed -i 's|/srv$fastcgi_script_name|$request_filename|g' /etc/nginx/apps/rutorrent.conf
             echo_log_only "ruTorrent fastcgi_script_name triggers nginx reload"
             reloadnginx=1
@@ -38,11 +43,11 @@ if [ -f /install/.rutorrent.lock ]; then
     fi
 
     if [[ -f /install/.flood.lock ]]; then
-        users=($(cut -d: -f1 < /etc/htpasswd))
+        mapfile -t users < <(cut -d: -f1 < /etc/htpasswd)
         for user in ${users[@]}; do
             if [[ ! -f /etc/nginx/apps/${user}.scgi.conf ]]; then
                 reloadnginx=1
-                cat > /etc/nginx/apps/${user}.scgi.conf << RUC
+                cat > "/etc/nginx/apps/${user}.scgi.conf" << RUC
 location /${user} {
     include scgi_params;
     scgi_pass unix:/var/run/${user}/.rtorrent.sock;

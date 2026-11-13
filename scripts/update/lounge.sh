@@ -8,8 +8,9 @@ function _uplounge() {
     fi
     npm uninstall -g thelounge --save >> /dev/null 2>&1
     yarn_install
-    yarn --non-interactive global add thelounge >> $log 2>&1
-    yarn --non-interactive cache clean >> $log 2>&1
+    # shellcheck disable=SC2154 # log is set by box/globals.sh
+    yarn --non-interactive global add thelounge >> "$log" 2>&1
+    yarn --non-interactive cache clean >> "$log" 2>&1
     sudo -u lounge bash -c "thelounge install thelounge-theme-zenburn" >> /dev/null 2>&1
     if [[ ! -d /home/lounge/.thelounge ]]; then
         mv /home/lounge/.lounge /home/lounge/.thelounge

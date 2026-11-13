@@ -9,6 +9,7 @@ if [[ -f /install/organizr.sh ]]; then
         echo_progress_done "Organizr nginx config updated"
 
         echo_progress_start "Pulling down new organizr source code"
+        # shellcheck disable=SC2024 # redirect to the root-owned swizzin log is intentional
         sudo -u www-data git -C "/srv/organizr" pull >> "${log:?}"
         echo_progress_done "Retrieved new organizr source code"
     fi
