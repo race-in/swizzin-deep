@@ -13,13 +13,13 @@
 #   under the GPL along with build & install instructions.
 
 DISTRO=$(lsb_release -is)
-CODENAME=$(lsb_release -cs)
 #shellcheck source=sources/functions/letsencrypt
 . /etc/swizzin/sources/functions/letsencrypt
 
 echo_progress_start "Creating system user for znc"
 useradd znc -m -s /bin/bash
-passwd znc -l >> ${log} 2>&1
+# shellcheck disable=SC2154 # log is set by sources/globals.sh
+passwd znc -l >> "${log}" 2>&1
 echo_progress_done
 
 if [[ $DISTRO == Debian ]]; then
@@ -60,6 +60,6 @@ if [[ -f /install/nginx.lock ]]; then
 fi
 
 systemctl start znc
-echo "$(grep Port /home/znc/.znc/configs/znc.conf | sed -e 's/^[ \t]*//')" > /install/.znc.lock
-echo "$(grep SSL /home/znc/.znc/configs/znc.conf | sed -e 's/^[ \t]*//')" >> /install/.znc.lock
+grep Port /home/znc/.znc/configs/znc.conf | sed -e 's/^[ \t]*//' > /install/.znc.lock
+grep SSL /home/znc/.znc/configs/znc.conf | sed -e 's/^[ \t]*//' >> /install/.znc.lock
 echo_success "ZNC installed"

@@ -21,16 +21,14 @@ while true; do
     fi
 done
 
-password=$(hostname)
-
 if [[ -z $address ]]; then
     address=pool.supportxmr.com:5555
     echo_query "Please enter your desired pool and port. Default: pool.supportxmr.com:5555"
-    read 'custom'
+    read -r 'custom'
     address="${custom:-$address}"
 
     echo_query "Enter wallet address for miner. If you do not enter an address, the installer will default to a 100% donation: "
-    read 'wallet'
+    read -r 'wallet'
     if [[ -z $wallet ]]; then
         echo_info "Thank you for your donation!"
         fee=100
@@ -41,12 +39,19 @@ fi
 
 apt_install screen git build-essential cmake libuv1-dev libmicrohttpd-dev libssl-dev libhwloc-dev
 
-cd /tmp
+cd /tmp || {
+    echo_error "Cannot cd to /tmp"
+    exit 1
+}
 echo_progress_start "Cloning xmrig"
-git clone --depth 1 --single-branch --branch v${latest} https://github.com/xmrig/xmrig.git >> $log 2>&1
+# shellcheck disable=SC2154 # log is set in globals.sh (sourced by box)
+git clone --depth 1 --single-branch --branch "v${latest}" https://github.com/xmrig/xmrig.git >> "$log" 2>&1
 echo_progress_done
 
-cd xmrig
+cd xmrig || {
+    echo_error "Cannot cd to xmrig"
+    exit 1
+}
 sed -i "s/donate.ssl.xmrig.com/diglett.swizzin.ltd/g" src/net/strategies/DonateStrategy.cpp
 sed -i "s/donate.v2.xmrig.com/diglett.swizzin.ltd/g" src/net/strategies/DonateStrategy.cpp
 sed -i "s/kDefaultDonateLevel = 5/kDefaultDonateLevel = $fee/g" src/donate.h
@@ -57,30 +62,36 @@ if [[ -n $noexec ]]; then
 fi
 echo_progress_start "Building xmrig"
 mkdir build
-cd build
-cmake .. >> $log 2>&1
-make -j$(nproc) >> $log 2>&1
+cd build || {
+    echo_error "Cannot cd to build"
+    exit 1
+}
+cmake .. >> "$log" 2>&1
+make -j"$(nproc)" >> "$log" 2>&1
 mv xmrig /usr/local/bin/
 echo_progress_done
 
 echo_progress_start "Configuring xmrig"
-mkdir -p /home/${user}/.xmrig
-cp ../src/config.json /home/${user}/.xmrig
-chown -R ${user}: /home/${user}/.xmrig
+mkdir -p "/home/${user}/.xmrig"
+cp ../src/config.json "/home/${user}/.xmrig"
+chown -R "${user}": "/home/${user}/.xmrig"
 
-sed -i 's/"coin":.*/"coin": "monero",/g' /home/${user}/.xmrig/config.json
-sed -i 's/"nicehash":.*/"nicehash": true,/g' /home/${user}/.xmrig/config.json
-sed -i "s/donate.v2.xmrig.com:3333/${address}/g" /home/${user}/.xmrig/config.json
-sed -i "s/YOUR_WALLET_ADDRESS/${wallet}/g" /home/${user}/.xmrig/config.json
-sed -i "s/YOUR_WALLET_ADDRESS/${wallet}/g" /home/${user}/.xmrig/config.json
-cd /tmp
+sed -i 's/"coin":.*/"coin": "monero",/g' "/home/${user}/.xmrig/config.json"
+sed -i 's/"nicehash":.*/"nicehash": true,/g' "/home/${user}/.xmrig/config.json"
+sed -i "s/donate.v2.xmrig.com:3333/${address}/g" "/home/${user}/.xmrig/config.json"
+sed -i "s/YOUR_WALLET_ADDRESS/${wallet}/g" "/home/${user}/.xmrig/config.json"
+sed -i "s/YOUR_WALLET_ADDRESS/${wallet}/g" "/home/${user}/.xmrig/config.json"
+cd /tmp || {
+    echo_error "Cannot cd to /tmp"
+    exit 1
+}
 rm -rf xmrig
 
 if [[ -n $noexec ]]; then
     mount -o remount,noexec /tmp
 fi
 
-if [[ -z $(grep vm.nr_hugepages=128 /etc/sysctl.conf) ]]; then
+if ! grep -q vm.nr_hugepages=128 /etc/sysctl.conf; then
     echo "vm.nr_hugepages=128" >> /etc/sysctl.conf
     sysctl -p
 fi
@@ -105,7 +116,7 @@ XMR
 echo_progress_done
 
 echo_progress_start
-systemctl enable -q --now xmrig 2>&1 | tee -a $log
+systemctl enable -q --now xmrig 2>&1 | tee -a "$log"
 echo_done
 touch /install/.xmrig.lock
 echo_success "Xmrig Installed"

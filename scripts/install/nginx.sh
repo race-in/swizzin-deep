@@ -10,7 +10,6 @@
 #   under the GPL along with build & install instructions.
 #
 
-distribution=$(_os_distro)
 codename=$(_os_codename)
 
 if [[ -n $(pidof apache2) ]]; then
@@ -50,7 +49,10 @@ esac
 # Prepare the /etc/nginx/ssl/ for openssl dhparm generation
 mkdir -p /etc/nginx/ssl/
 chmod 700 /etc/nginx/ssl
-cd /etc/nginx/ssl
+cd /etc/nginx/ssl || {
+    echo_error "Cannot cd to /etc/nginx/ssl"
+    exit 1
+}
 
 # Create temp.log for openssl dhparm generation to prevent a race condition with logging
 #shellcheck source=sources/functions/utils
@@ -64,6 +66,7 @@ openssl dhparam -out dhparam.pem 2048 >> $templog 2>&1 &
 
 # Install packages for nginx in the foreground
 APT="nginx libnginx-mod-http-fancyindex subversion ssl-cert php-fpm libfcgi0ldbl php-cli php-dev php-xml php-curl php-xmlrpc php-json php-mbstring php-opcache php-zip ${geoip} ${mcrypt}"
+# shellcheck disable=SC2086 # APT is a space separated package list, splitting is intended
 apt_install $APT
 
 # Wait for the background task of openssl dhparm generation to finish
@@ -71,14 +74,17 @@ wait
 
 # Append the results of temp.log to swizzin.log and remove temp.log
 echo_log_only "Begin of OpenSSL dhparm results"
-cat $templog >> $log 2>&1
+cat $templog >> "$log" 2>&1
 echo_log_only "End of OpenSSL dhparm results"
 rm_if_exists $templog
 
 # Began configuring nginx in the foreground
 mkdir -p /srv
-cd /etc/php
-phpv=$(ls -d */ | cut -d/ -f1)
+cd /etc/php || {
+    echo_error "Cannot cd to /etc/php"
+    exit 1
+}
+phpv=$(find /etc/php -mindepth 1 -maxdepth 1 -type d -printf '%f\n')
 echo_progress_start "Making adjustments to PHP"
 for version in $phpv; do
     sed -i -e "s/post_max_size = 8M/post_max_size = 64M/" \
@@ -89,9 +95,9 @@ for version in $phpv; do
         -e "s/;opcache.enable=0/opcache.enable=1/" \
         -e "s/;opcache.memory_consumption=64/opcache.memory_consumption=128/" \
         -e "s/;opcache.max_accelerated_files=2000/opcache.max_accelerated_files=4000/" \
-        -e "s/;opcache.revalidate_freq=2/opcache.revalidate_freq=240/" /etc/php/$version/fpm/php.ini
-    phpenmod -v $version opcache
-    sed -i 's/;env\[PATH\]/env[PATH]/g' /etc/php/$version/fpm/pool.d/www.conf
+        -e "s/;opcache.revalidate_freq=2/opcache.revalidate_freq=240/" "/etc/php/$version/fpm/php.ini"
+    phpenmod -v "$version" opcache
+    sed -i 's/;env\[PATH\]/env[PATH]/g' "/etc/php/$version/fpm/pool.d/www.conf"
 done
 echo_progress_done "PHP config modified"
 
@@ -200,8 +206,8 @@ PROX
 echo_progress_done "Config installed"
 
 echo_progress_start "Installing fancyindex"
-git clone https://github.com/Naereen/Nginx-Fancyindex-Theme/ /tmp/fancyindex >> $log 2>&1
-mv /tmp/fancyindex/Nginx-Fancyindex-Theme-dark /srv/fancyindex >> $log 2>&1
+git clone https://github.com/Naereen/Nginx-Fancyindex-Theme/ /tmp/fancyindex >> "$log" 2>&1
+mv /tmp/fancyindex/Nginx-Fancyindex-Theme-dark /srv/fancyindex >> "$log" 2>&1
 rm -rf /tmp/fancyindex
 
 cat > /etc/nginx/snippets/fancyindex.conf << FIC
@@ -237,12 +243,12 @@ location /fancyindex {
 FIAC
 echo_progress_done "Fancyindex installed"
 
-locks=($(find /usr/local/bin/swizzin/nginx -type f -printf "%f\n" | cut -d "." -f 1 | sort -d -r))
+mapfile -t locks <<< "$(find /usr/local/bin/swizzin/nginx -type f -printf "%f\n" | cut -d "." -f 1 | sort -d -r)"
 for i in "${locks[@]}"; do
     app=${i}
     if [[ -f /install/.$app.lock ]]; then
         echo_progress_start "Installing nginx config for $app"
-        bash /usr/local/bin/swizzin/nginx/$app.sh
+        bash "/usr/local/bin/swizzin/nginx/$app.sh"
         echo_progress_done "Nginx config for $app installed"
     fi
 done

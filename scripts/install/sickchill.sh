@@ -3,7 +3,6 @@
 # Author: liara
 
 user=$(cut -d: -f1 < /root/.master.info)
-codename=$(lsb_release -cs)
 #shellcheck source=sources/functions/pyenv
 . /etc/swizzin/sources/functions/pyenv
 #shellcheck source=sources/functions/utils
@@ -24,7 +23,7 @@ if [[ -n $active ]]; then
     fi
     if [[ $disable == "yes" ]]; then
         echo_progress_start "Disabling service"
-        systemctl disable -q --now ${active}
+        systemctl disable -q --now "${active}"
         echo_progress_done
     else
         exit 1
@@ -32,19 +31,21 @@ if [[ -n $active ]]; then
 fi
 
 LIST='git python3-dev python3-venv python3-pip'
+# shellcheck disable=SC2086 # LIST is a package list, splitting is intended
 apt_install $LIST
 echo_progress_start "Installing venv for sickchill"
-python3 -m venv /opt/.venv/sickchill >> ${log} 2>&1
+python3 -m venv /opt/.venv/sickchill >> "${log}" 2>&1
 echo_progress_done
 
-chown -R ${user}: /opt/.venv/sickchill
+chown -R "${user}": /opt/.venv/sickchill
 echo_progress_start "Cloning SickChill"
-git clone https://github.com/SickChill/SickChill.git /opt/sickchill >> ${log} 2>&1
-chown -R $user: /opt/sickchill
+git clone https://github.com/SickChill/SickChill.git /opt/sickchill >> "${log}" 2>&1
+chown -R "$user": /opt/sickchill
 echo_progress_done
 
 echo_progress_start "Installing requirements.txt with pip"
-sudo -u ${user} bash -c "/opt/.venv/sickchill/bin/pip3 install -r /opt/sickchill/requirements.txt" >> $log 2>&1
+# shellcheck disable=SC2024 # redirect to root-owned log is intentional
+sudo -u "${user}" bash -c "/opt/.venv/sickchill/bin/pip3 install -r /opt/sickchill/requirements.txt" >> "$log" 2>&1
 echo_progress_done
 
 install_rar
@@ -67,7 +68,7 @@ ExecStart=/opt/.venv/sickchill/bin/python3 /opt/sickchill/SickChill.py -q --daem
 WantedBy=multi-user.target
 SCSD
 
-systemctl enable -q --now sickchill 2>&1 | tee -a $log
+systemctl enable -q --now sickchill 2>&1 | tee -a "$log"
 echo_progress_done "Sickchill started"
 
 if [[ -f /install/.nginx.lock ]]; then

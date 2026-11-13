@@ -21,7 +21,7 @@ ip=$(ip route get 1 | sed -n 's/^.*src \([0-9.]*\) .*$/\1/p')
 
 if [[ -z $LE_HOSTNAME ]]; then
     echo_query "Enter domain name to secure with LE"
-    read -e hostname
+    read -er hostname
 else
     hostname=$LE_HOSTNAME
 fi
@@ -79,14 +79,14 @@ if [[ ${cf} == yes ]]; then
 
     if [[ -z $LE_CF_API ]]; then
         echo_query "Enter CF API key"
-        read -e api
+        read -er api
     else
         api=$LE_CF_API
     fi
 
     if [[ -z $LE_CF_EMAIL ]]; then
         echo_query "CF Email"
-        read -e email
+        read -er email
     else
         api=$LE_CF_EMAIL
     fi
@@ -101,11 +101,12 @@ if [[ ${cf} == yes ]]; then
         exit 1
     fi
 
+    # shellcheck disable=SC2154 # record is never assigned here; block is intentionally inert
     if [[ ${record} == no ]]; then
 
         if [[ -z $LE_CF_ZONE ]]; then
             echo_query "Zone Name (example.com)"
-            read -e zone
+            read -er zone
         else
             zone=$LE_CF_ZONE
         fi
@@ -127,20 +128,21 @@ apt_install socat
 
 if [[ ! -f /root/.acme.sh/acme.sh ]]; then
     echo_progress_start "Installing ACME script"
-    curl https://get.acme.sh | sh >> $log 2>&1
+    # shellcheck disable=SC2154 # log is set by scripts/box
+    curl https://get.acme.sh | sh >> "$log" 2>&1
     echo_progress_done
 fi
 
-mkdir -p /etc/nginx/ssl/${hostname}
+mkdir -p "/etc/nginx/ssl/${hostname}"
 chmod 700 /etc/nginx/ssl
 
-/root/.acme.sh/acme.sh --set-default-ca --server letsencrypt >> $log 2>&1 || {
+/root/.acme.sh/acme.sh --set-default-ca --server letsencrypt >> "$log" 2>&1 || {
     echo_warn "Could not set default certificate authority to Let's Encrypt. Upgrading acme.sh to retry."
-    /root/.acme.sh/acme.sh --upgrade >> $log 2>&1 || {
+    /root/.acme.sh/acme.sh --upgrade >> "$log" 2>&1 || {
         echo_error "Could not upgrade acme.sh."
         exit 1
     }
-    /root/.acme.sh/acme.sh --set-default-ca --server letsencrypt >> $log 2>&1 || {
+    /root/.acme.sh/acme.sh --set-default-ca --server letsencrypt >> "$log" 2>&1 || {
         echo_error "Could not set default certificate authority to Let's Encrypt"
         exit 1
     }
@@ -149,19 +151,19 @@ chmod 700 /etc/nginx/ssl
 
 echo_progress_start "Registering certificates"
 if [[ ${cf} == yes ]]; then
-    /root/.acme.sh/acme.sh --force --issue --dns dns_cf -d ${hostname} >> $log 2>&1 || {
+    /root/.acme.sh/acme.sh --force --issue --dns dns_cf -d "${hostname}" >> "$log" 2>&1 || {
         echo_error "Certificate could not be issued."
         exit 1
     }
 else
     if [[ $main = yes ]]; then
-        /root/.acme.sh/acme.sh --force --issue --nginx -d ${hostname} >> $log 2>&1 || {
+        /root/.acme.sh/acme.sh --force --issue --nginx -d "${hostname}" >> "$log" 2>&1 || {
             echo_error "Certificate could not be issued."
             exit 1
         }
     else
         systemctl stop nginx
-        /root/.acme.sh/acme.sh --force --issue --standalone -d ${hostname} --pre-hook "systemctl stop nginx" --post-hook "systemctl start nginx" >> $log 2>&1 || {
+        /root/.acme.sh/acme.sh --force --issue --standalone -d "${hostname}" --pre-hook "systemctl stop nginx" --post-hook "systemctl start nginx" >> "$log" 2>&1 || {
             echo_error "Certificate could not be issued. Please check your info and try again"
             exit 1
         }
@@ -172,7 +174,7 @@ fi
 echo_progress_done "Certificate acquired"
 
 echo_progress_start "Installing certificate"
-/root/.acme.sh/acme.sh --force --install-cert -d ${hostname} --key-file /etc/nginx/ssl/${hostname}/key.pem --fullchain-file /etc/nginx/ssl/${hostname}/fullchain.pem --ca-file /etc/nginx/ssl/${hostname}/chain.pem --reloadcmd "systemctl reload nginx"
+/root/.acme.sh/acme.sh --force --install-cert -d "${hostname}" --key-file "/etc/nginx/ssl/${hostname}/key.pem" --fullchain-file "/etc/nginx/ssl/${hostname}/fullchain.pem" --ca-file "/etc/nginx/ssl/${hostname}/chain.pem" --reloadcmd "systemctl reload nginx"
 if [[ $main == yes ]]; then
     sed -i "s/ssl_certificate .*/ssl_certificate \/etc\/nginx\/ssl\/${hostname}\/fullchain.pem;/g" /etc/nginx/sites-enabled/default
     sed -i "s/ssl_certificate_key .*/ssl_certificate_key \/etc\/nginx\/ssl\/${hostname}\/key.pem;/g" /etc/nginx/sites-enabled/default

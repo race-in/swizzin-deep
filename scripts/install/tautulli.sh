@@ -21,10 +21,11 @@ user=$(cut -d: -f1 < /root/.master.info)
 
 systempy3_ver=$(get_candidate_version python3)
 
-if dpkg --compare-versions ${systempy3_ver} lt 3.8.0 || dpkg --compare-versions ${systempy3_ver} ge 3.12.0; then
+if dpkg --compare-versions "${systempy3_ver}" lt 3.8.0 || dpkg --compare-versions "${systempy3_ver}" ge 3.12.0; then
     PYENV=True
 else
     LIST='python3-dev python3-setuptools python3-pip python3-venv'
+    # shellcheck disable=SC2086 # LIST is a package list, splitting is intended
     apt_install $LIST
 fi
 
@@ -40,7 +41,7 @@ case ${PYENV} in
         ;;
 esac
 
-cd /opt
+cd /opt || exit 1
 echo_progress_start "Cloning latest Tautulli repo"
 git clone https://github.com/Tautulli/Tautulli.git tautulli >> "${log}" 2>&1
 echo_progress_done
@@ -68,7 +69,7 @@ Group=nogroup
 WantedBy=multi-user.target
 PPY
 
-systemctl enable -q --now tautulli 2>&1 | tee -a $log
+systemctl enable -q --now tautulli 2>&1 | tee -a "$log"
 
 echo_progress_done "Tautulli started"
 

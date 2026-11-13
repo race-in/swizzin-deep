@@ -20,13 +20,14 @@ echo_info "Please note that both xfce4 and x2go are VERY heavy packages to insta
 
 apt_install xfce4
 #disable lightdm because it causes suspend issues on Ubuntu
-systemctl disable --now lightdm >> ${log} 2>&1
+# shellcheck disable=SC2154 # log is set by sources/globals.sh
+systemctl disable --now lightdm >> "${log}" 2>&1
 
 echo_progress_start "Installing x2go repositories ... "
 
 if [[ $distribution == Ubuntu ]]; then
     apt_install software-properties-common
-    apt-add-repository ppa:x2go/stable -y >> ${log} 2>&1
+    apt-add-repository ppa:x2go/stable -y >> "${log}" 2>&1
     echo_progress_done "Repos installed via PPA"
     apt_update
 else
@@ -43,7 +44,7 @@ deb-src [signed-by=/usr/share/keyrings/x2go-archive-keyring.gpg] http://packages
 EOF
     echo_progress_done "Repo added"
     mkdir -m 700 /root/.gnupg
-    gpg --no-default-keyring --keyring /usr/share/keyrings/x2go-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys E1F958385BFE2B6E >> ${log} 2>&1
+    gpg --no-default-keyring --keyring /usr/share/keyrings/x2go-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys E1F958385BFE2B6E >> "${log}" 2>&1
     apt_update
     apt_install x2go-keyring
 fi

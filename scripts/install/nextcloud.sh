@@ -20,21 +20,21 @@ if [[ ! -f /install/.nginx.lock ]]; then
     exit 1
 else
     echo_query "Please choose a password for the nextcloud mysql user." "hidden"
-    read -s 'nextpass'
+    read -s -r 'nextpass'
     echo
     #Check for existing mysql and install if not found
     if [[ -n $inst ]]; then
         echo_warn "Existing mysql server detected!"
         echo_query "Please enter mysql root password so that installation may continue." "hidden"
-        read -s 'password'
+        read -s -r 'password'
         echo
     else
         while [ -z "$password" ]; do
             echo_query "Please enter a mysql root password" "hidden"
-            read -s 'pass1'
+            read -s -r 'pass1'
             echo_query "Re-enter password to verify" "hidden"
-            read -s 'pass2'
-            if [ $pass1 = $pass2 ]; then
+            read -s -r 'pass2'
+            if [ "$pass1" = "$pass2" ]; then
                 password=$pass1
             else
                 echo_warn "Passwords do not match"
@@ -45,13 +45,13 @@ else
         if [[ $(systemctl is-active mysql) != "active" ]]; then
             systemctl start mysql
         fi
-        mysqladmin -u root password ${password}
+        mysqladmin -u root password "${password}"
         echo_progress_done "Database installed"
     fi
     #Depends
     apt_install unzip php-mysql libxml2-dev php-common php-gd php-json php-curl php-zip php-xml php-mbstring
     #a2enmod rewrite > /dev/null 2>&1
-    cd /tmp
+    cd /tmp || exit 1
 
     echo_progress_start "Downloading and extracting Nextcloud"
     codename=$(lsb_release -cs)
@@ -66,11 +66,12 @@ else
             version=latest
             ;;
     esac
-    wget https://download.nextcloud.com/server/releases/${version}.zip >> ${log} 2>&1 || {
+    # shellcheck disable=SC2154 # log is set by sources/globals.sh
+    wget https://download.nextcloud.com/server/releases/${version}.zip >> "${log}" 2>&1 || {
         echo_error "Could not download nextcloud"
         exit 1
     }
-    unzip ${version}.zip >> ${log} 2>&1
+    unzip "${version}.zip" >> "${log}" 2>&1
     mv nextcloud /srv
     rm -rf /tmp/${version}.zip
     echo_progress_done "Nextcloud extracted"

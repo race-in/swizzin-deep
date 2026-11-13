@@ -32,6 +32,7 @@ clbServerPath="/home/$CALIBRE_LIBRARY_USER/.config/calibrecs"
 
 _adduser() {
     echo_progress_start "Adding users to calibre content server"
+    # shellcheck disable=SC2154 # users is set by the caller of _adduser (currently disabled below)
     for user in "${users[@]}"; do
         echo_log_only "Adding user $user"
         pass=$(_get_user_password "$user")

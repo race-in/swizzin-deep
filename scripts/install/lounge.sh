@@ -7,12 +7,14 @@ function _install() {
     useradd lounge --system -m -d /opt/lounge
 
     echo_progress_start "Installing lounge from npm"
-    yarn --non-interactive global add thelounge >> $log 2>&1 || {
+    # shellcheck disable=SC2154 # log is set by sources/globals.sh
+    yarn --non-interactive global add thelounge >> "$log" 2>&1 || {
         echo_error "Lounge failed to install"
         exit 1
     }
-    yarn --non-interactive cache clean >> $log 2>&1
-    sudo -u lounge bash -c "thelounge install thelounge-theme-zenburn" >> $log 2>&1
+    yarn --non-interactive cache clean >> "$log" 2>&1
+    # shellcheck disable=SC2024 # redirect to root-owned log is intentional
+    sudo -u lounge bash -c "thelounge install thelounge-theme-zenburn" >> "$log" 2>&1
     echo_progress_done
 
     mkdir -p /opt/lounge/.thelounge/
@@ -532,7 +534,7 @@ StartLimitBurst=3
 WantedBy=multi-user.target
 EOSD
 
-    systemctl enable -q --now lounge 2>&1 | tee -a $log
+    systemctl enable -q --now lounge 2>&1 | tee -a "$log"
 
     sleep 3
     echo_progress_done "Lounge started"
@@ -545,10 +547,10 @@ function _adduser() {
         if [[ $u = "$master" ]]; then
             password=$(cut -d: -f2 < /root/.master.info)
         else
-            password=$(cut -d: -f2 < /root/$u.info)
+            password=$(cut -d: -f2 < "/root/$u.info")
         fi
         crypt=$(node /usr/local/share/.config/yarn/global/node_modules/bcryptjs/bin/bcrypt "${password}")
-        cat > /opt/lounge/.thelounge/users/$u.json << EOU
+        cat > "/opt/lounge/.thelounge/users/$u.json" << EOU
 {
 	"password": "${crypt}",
 	"log": true,
@@ -562,10 +564,10 @@ EOU
     chown -R lounge: /opt/lounge
 }
 
-users=($(cut -d: -f1 < /etc/htpasswd))
+readarray -t users < <(cut -d: -f1 < /etc/htpasswd)
 
 if [[ -n $1 ]]; then
-    users=$1
+    users=("$1")
     _adduser
     exit 0
 fi

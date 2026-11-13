@@ -15,7 +15,7 @@ install_java8
 airsonic_dl() {
     echo_progress_start "Downloading Airsonic binary"
     mkdir $airsonicdir -p
-    latest_version=$(curl -fsSLI -o /dev/null -w %{url_effective} https://github.com/airsonic/airsonic/releases/latest | grep -oP '([^\/]+$)')
+    latest_version=$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/airsonic/airsonic/releases/latest | grep -oP '([^\/]+$)')
     dlurl=https://github.com/airsonic/airsonic/releases/download/${latest_version}/airsonic.war
     echo_log_only "dlurl = $dlurl"
     if ! wget "$dlurl" -O ${airsonicdir}/airsonic.war >> "$log" 2>&1; then
@@ -51,6 +51,7 @@ airsonic_nginx() {
         systemctl reload nginx
         echo_progress_done
     else
+        # shellcheck disable=SC2154 # bold is set by sources/functions/color_echo
         echo_info "Airosnic will run on <IP/domain.tld>${bold}:8185"
     fi
 }

@@ -26,7 +26,8 @@ MASTER=$(cut -d: -f1 < /root/.master.info)
 
 function _installRapidleech1() {
     echo_progress_start "Cloning rapidleech"
-    git clone https://github.com/Th3-822/rapidleech.git /home/"${MASTER}"/rapidleech >> $log 2>&1
+    # shellcheck disable=SC2154 # log is set by sources/globals.sh
+    git clone https://github.com/Th3-822/rapidleech.git /home/"${MASTER}"/rapidleech >> "$log" 2>&1
     chown "${MASTER}":"${MASTER}" -R /home/"${MASTER}"/rapidleech
     echo_progress_done
 }

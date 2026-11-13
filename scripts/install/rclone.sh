@@ -23,7 +23,8 @@ sed -i -e 's/#user_allow_other/user_allow_other/' /etc/fuse.conf
 
 echo_progress_start "Downloading and installing rclone"
 # One-liner to check arch/os type, as well as download latest rclone for relevant system.
-wget -q https://rclone.org/install.sh -O /tmp/rcloneinstall.sh >> $log 2>&1
+# shellcheck disable=SC2154 # log is set by sources/globals.sh
+wget -q https://rclone.org/install.sh -O /tmp/rcloneinstall.sh >> "$log" 2>&1
 
 # Make sure rclone downloads and installs without error before proceeding
 if ! bash /tmp/rcloneinstall.sh; then

@@ -5,7 +5,8 @@
 function _sources() {
     echo_progress_start "Installing ombi apt sources"
     echo "deb [signed-by=/usr/share/keyrings/ombi-archive-keyring.gpg] https://apt.ombi.app/master jessie main" > /etc/apt/sources.list.d/ombi.list
-    curl -s https://apt.ombi.app/pub.key | gpg --dearmor > /usr/share/keyrings/ombi-archive-keyring.gpg 2>> ${log}
+    # shellcheck disable=SC2154 # log is set by sources/globals.sh
+    curl -s https://apt.ombi.app/pub.key | gpg --dearmor > /usr/share/keyrings/ombi-archive-keyring.gpg 2>> "${log}"
     echo_progress_done "Sources installed"
     apt_update
 }

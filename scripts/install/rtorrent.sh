@@ -12,7 +12,7 @@
 function _string() { perl -le 'print map {(a..z,A..Z,0..9)[rand 62] } 0..pop' 15; }
 
 function _rconf() {
-    cat > /home/${user}/.rtorrent.rc << EOF
+    cat > "/home/${user}/.rtorrent.rc" << EOF
 # -- START HERE --
 directory.default.set = /home/${user}/torrents/rtorrent
 encoding.add = UTF-8
@@ -44,16 +44,19 @@ execute = {sh,-c,/usr/bin/php /srv/rutorrent/php/initplugins.php ${user} &}
 
 # -- END HERE --
 EOF
-    chown ${user}:${user} -R /home/${user}/.rtorrent.rc
+    chown "${user}:${user}" -R "/home/${user}/.rtorrent.rc"
 }
 
 function _makedirs() {
-    mkdir -p /home/${user}/torrents/rtorrent 2>> $log
-    mkdir -p /home/${user}/.sessions
-    mkdir -p /home/${user}/rwatch
-    chown -R ${user}:${user} /home/${user}/{torrents,.sessions,rwatch} 2>> $log
-    usermod -a -G www-data ${user} 2>> $log
-    usermod -a -G ${user} www-data 2>> $log
+    # shellcheck disable=SC2154 # log is set in globals.sh (sourced by box)
+    mkdir -p "/home/${user}/torrents/rtorrent" 2>> "$log"
+    mkdir -p "/home/${user}/.sessions"
+    mkdir -p "/home/${user}/rwatch"
+    {
+        chown -R "${user}:${user}" "/home/${user}/"{torrents,.sessions,rwatch}
+        usermod -a -G www-data "${user}"
+        usermod -a -G "${user}" www-data
+    } 2>> "$log"
 }
 
 _systemd() {
@@ -74,7 +77,7 @@ WorkingDirectory=/home/%i/
 [Install]
 WantedBy=multi-user.target
 EOF
-    systemctl enable -q --now rtorrent@${user} 2>> $log
+    systemctl enable -q --now "rtorrent@${user}" 2>> "$log"
 }
 
 export DEBIAN_FRONTEND=noninteractive
@@ -85,9 +88,8 @@ export DEBIAN_FRONTEND=noninteractive
 . /etc/swizzin/sources/functions/curl
 noexec=$(grep "/tmp" /etc/fstab | grep noexec)
 user=$(cut -d: -f1 < /root/.master.info)
-rutorrent="/srv/rutorrent/"
 port=$((RANDOM % 64025 + 1024))
-portend=$((${port} + 1500))
+portend=$((port + 1500))
 
 if [[ -n $1 ]]; then
     user=$1
@@ -96,7 +98,7 @@ if [[ -n $1 ]]; then
     exit 0
 fi
 
-whiptail_rtorrent
+whiptail_rtorrent "$@"
 
 if [[ -n $noexec ]]; then
     mount -o remount,exec /tmp

@@ -35,11 +35,11 @@ _install() {
     esac
 
     dlurl="$(curl -sNL https://api.github.com/repos/filebrowser/filebrowser/releases/latest | jq -r '.assets[]?.browser_download_url' | grep linux-"${fb_arch}")"
-    wget -O "/home/${username}/filebrowser.tar.gz" "$dlurl" >> $log 2>&1 || {
+    wget -O "/home/${username}/filebrowser.tar.gz" "$dlurl" >> "$log" 2>&1 || {
         echo_error "Failed to download archive"
         exit 1
     }
-    tar -xvzf "/home/${username}/filebrowser.tar.gz" --exclude LICENSE --exclude README.md -C "/home/${username}/bin" >> $log 2>&1 || {
+    tar -xvzf "/home/${username}/filebrowser.tar.gz" --exclude LICENSE --exclude README.md -C "/home/${username}/bin" >> "$log" 2>&1 || {
         echo_error "Failed to extract downloaded file"
         exit 1
     }

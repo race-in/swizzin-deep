@@ -20,6 +20,7 @@
 MASTER=$(cut -d: -f1 < /root/.master.info)
 
 echo_progress_start "Adding Syncthing Repository"
+# shellcheck disable=SC2154 # log is set by sources/globals.sh
 curl -s https://syncthing.net/release-key.txt | gpg --dearmor > /usr/share/keyrings/syncthing-archive-keyring.gpg 2>> "${log}"
 echo "deb [signed-by=/usr/share/keyrings/syncthing-archive-keyring.gpg] http://apt.syncthing.net/ syncthing stable" > /etc/apt/sources.list.d/syncthing.list
 echo_progress_done "Repo added"
@@ -45,8 +46,8 @@ RestartForceExitStatus=3 4
 [Install]
 WantedBy=multi-user.target
 SYNC
-systemctl enable -q syncthing@${MASTER} 2>&1 | tee -a $log
-systemctl start syncthing@${MASTER} >> $log 2>&1
+systemctl enable -q "syncthing@${MASTER}" 2>&1 | tee -a "$log"
+systemctl start "syncthing@${MASTER}" >> "$log" 2>&1
 echo_progress_done
 
 if [[ -f /install/.nginx.lock ]]; then

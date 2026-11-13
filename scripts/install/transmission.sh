@@ -29,9 +29,11 @@ EOF
 
 _start_transmission() {
     #This always needs to be done only after the configs have been made, otherwise transmission will overwrite them.
+    # shellcheck disable=SC2154 # bold is set in globals.sh (sourced by box)
     echo_progress_start "Starting transmission instance for ${bold}$user"
-    systemctl enable -q transmission@${user} 2>> $log
-    service transmission@${user} start
+    # shellcheck disable=SC2154 # log is set in globals.sh (sourced by box)
+    systemctl enable -q "transmission@${user}" 2>> "$log"
+    service "transmission@${user}" start
     echo_progress_done "Instance started"
 }
 
@@ -53,14 +55,23 @@ _setenv_transmission() {
     echo_log_only "rpc_whitelist_enabled = $rpc_whitelist_enabled"
 
     . /etc/swizzin/sources/functions/transmission
-    [[ -z $rpc_port ]] && export rpc_port=$(_get_next_port_from_json 'rpc-port' 9091)
+    [[ -z $rpc_port ]] && {
+        rpc_port=$(_get_next_port_from_json 'rpc-port' 9091)
+        export rpc_port
+    }
     echo_log_only "rpc_port = $rpc_port"
 
-    [[ -z $peer_port ]] && export peer_port=$(_get_next_port_from_json 'peer-port' 51314)
+    [[ -z $peer_port ]] && {
+        peer_port=$(_get_next_port_from_json 'peer-port' 51314)
+        export peer_port
+    }
     echo_log_only "peer_port = $peer_port"
 
     . /etc/swizzin/sources/functions/utils
-    [[ -z $rpc_password ]] && export rpc_password=$(_get_user_password ${user})
+    [[ -z $rpc_password ]] && {
+        rpc_password=$(_get_user_password "${user}")
+        export rpc_password
+    }
 
     [[ -z $watch_dir ]] && export watch_dir='transmission/watch'
     [[ -z $watch_dir_enabled ]] && export watch_dir_enabled="true"
@@ -81,22 +92,22 @@ _unsetenv_transmission() {
 
 _mkdir_transmission() {
     echo_progress_start "Creating directories for ${bold}$user"
-    mkdir -p /home/${user}/${download_dir}
-    chown ${user}:${user} -R /home/${user}/${download_dir%%/*}
-    mkdir -p /home/${user}/.config/transmission-daemon
-    mkdir -p /home/${user}/.config/transmission-daemon/blocklists
-    mkdir -p /home/${user}/.config/transmission-daemon/resume
-    mkdir -p /home/${user}/.config/transmission-daemon/torrents
-    chown ${user}:${user} -R /home/${user}/.config
+    mkdir -p "/home/${user}/${download_dir}"
+    chown "${user}:${user}" -R "/home/${user}/${download_dir%%/*}"
+    mkdir -p "/home/${user}/.config/transmission-daemon"
+    mkdir -p "/home/${user}/.config/transmission-daemon/blocklists"
+    mkdir -p "/home/${user}/.config/transmission-daemon/resume"
+    mkdir -p "/home/${user}/.config/transmission-daemon/torrents"
+    chown "${user}:${user}" -R "/home/${user}/.config"
 
     if [[ $incomplete_dir_enabled = "true" ]]; then
-        mkdir -p /home/${user}/${incomplete_dir}
-        chown ${user}:${user} -R /home/${user}/${incomplete_dir%%/*}
+        mkdir -p "/home/${user}/${incomplete_dir}"
+        chown "${user}:${user}" -R "/home/${user}/${incomplete_dir%%/*}"
     fi
 
     if [[ $watch_dir_enabled = "true" ]]; then
-        mkdir -p /home/${user}/${watch_dir}
-        chown ${user}:${user} -R /home/${user}/${watch_dir%%/*}
+        mkdir -p "/home/${user}/${watch_dir}"
+        chown "${user}:${user}" -R "/home/${user}/${watch_dir%%/*}"
     fi
 
     echo_progress_done "Directories created"
@@ -104,7 +115,7 @@ _mkdir_transmission() {
 
 _mkconf_transmission() {
     echo_progress_start "Creating config for ${bold}$user"
-    cat > /home/${user}/.config/transmission-daemon/settings.json << EOF
+    cat > "/home/${user}/.config/transmission-daemon/settings.json" << EOF
 {
     "alt-speed-down": 50,
     "alt-speed-enabled": false,
@@ -203,7 +214,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 noexec=$(grep "/tmp" /etc/fstab | grep noexec)
 user=$(cut -d: -f1 < /root/.master.info)
-users=($(cut -d: -f1 < /etc/htpasswd))
+mapfile -t users < <(cut -d: -f1 < /etc/htpasswd)
 
 # Extra-user-only functions
 if [[ -n $1 ]]; then

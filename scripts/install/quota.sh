@@ -23,8 +23,6 @@ green=$(tput setaf 2)
 yellow=$(tput setaf 3)
 bold=$(tput bold)
 normal=$(tput sgr0)
-alert=${white}${on_red}
-title=${standout}
 
 echo
 echo "##################################################################################"
@@ -47,7 +45,7 @@ echo
 echo -e "${bold}${yellow}1)${normal} / - ${green}root mount${normal}"
 echo -e "${bold}${yellow}2)${normal} /home - ${green}home mount${normal}"
 echo -ne "${bold}${yellow}What is your mount point for user quotas?${normal} (Default ${green}1${normal}): "
-read version
+read -r version
 case $version in
     1 | "") primaryroot=root ;;
     2) primaryroot=home ;;
@@ -78,9 +76,9 @@ function _installquota() {
         loc=$loc2
     fi
 
-    if [[ -n $(echo $hook | grep defaults) ]]; then
+    if echo "$hook" | grep -q "defaults"; then
         hook=defaults
-    elif [[ -n $(echo $hook | grep errors=remount-ro) ]]; then
+    elif echo "$hook" | grep -q "errors=remount-ro"; then
         hook=errors=remount-ro
     else
         echo "ERROR: Could not find a hook in /etc/fstab for quotas to install to. Quota requires either defaults or errors=remount-ro to be present as a mount option for the intended quota partition."
@@ -89,15 +87,23 @@ function _installquota() {
 
     echo "Installing dependencies"
     if [[ $DISTRO == Ubuntu ]]; then
+        # shellcheck disable=SC1003 # the backslash is part of the sed address, not an escaped quote
         sed -ie '/\'"${loc}"'/ s/'${hook}'/'${hook}',usrjquota=aquota.user,jqfmt=vfsv1/' /etc/fstab
         apt_install linux-image-extra-virtual quota
+        # shellcheck disable=SC2129 # separate redirects keep per-command failure isolation
+        # shellcheck disable=SC2086 # loc's trailing tab is meant to be stripped by word splitting
+        # shellcheck disable=SC2154 # log is set by scripts/box
         mount -o remount ${loc} >> "${log}" 2>&1
         quotacheck -auMF vfsv1 >> "${log}" 2>&1
         quotaon -uv / >> "${log}" 2>&1
         systemctl start quota >> "${log}" 2>&1
     elif [[ $DISTRO == Debian ]]; then
+        # shellcheck disable=SC1003 # the backslash is part of the sed address, not an escaped quote
         sed -ie '/\'"${loc}"'/ s/'${hook}'/'${hook}',usrjquota=aquota.user,jqfmt=vfsv1/' /etc/fstab
         apt_install quota
+        # shellcheck disable=SC2129 # separate redirects keep per-command failure isolation
+        # shellcheck disable=SC2086 # loc's trailing tab is meant to be stripped by word splitting
+        # shellcheck disable=SC2154 # log is set by scripts/box
         mount -o remount ${loc} >> "${log}" 2>&1
         quotacheck -auMF vfsv1 >> "${log}" 2>&1
         quotaon -uv / >> "${log}" 2>&1

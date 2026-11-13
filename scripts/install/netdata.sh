@@ -3,7 +3,8 @@
 # Author: liara
 
 echo_progress_start "Running netdata install script"
-bash <(curl -Ss https://get.netdata.cloud/kickstart.sh) --non-interactive >> $log 2>&1
+# shellcheck disable=SC2154 # log is set by sources/globals.sh
+bash <(curl -Ss https://get.netdata.cloud/kickstart.sh) --non-interactive >> "$log" 2>&1
 echo_progress_done
 
 if [[ -f /install/.nginx.lock ]]; then

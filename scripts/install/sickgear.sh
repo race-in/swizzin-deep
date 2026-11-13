@@ -3,7 +3,6 @@
 # Author: liara
 
 user=$(cut -d: -f1 < /root/.master.info)
-codename=$(lsb_release -cs)
 #shellcheck source=sources/functions/utils
 . /etc/swizzin/sources/functions/utils
 
@@ -22,7 +21,7 @@ if [[ -n $active ]]; then
     fi
     if [[ $disable == "yes" ]]; then
         echo_progress_start "Disabling service"
-        systemctl disable -q --now ${active} >> ${log} 2>&1
+        systemctl disable -q --now "${active}" >> "${log}" 2>&1
         echo_progress_done
     else
         exit 1
@@ -30,7 +29,7 @@ if [[ -n $active ]]; then
 fi
 
 mkdir -p /opt/.venv
-chown ${user}: /opt/.venv
+chown "${user}": /opt/.venv
 
 #minver 3.7.2
 apt_install git-core openssl libssl-dev python3 python3-pip python3-dev python3-venv
@@ -39,15 +38,15 @@ python3 -m venv /opt/.venv/sickgear
 echo_progress_done
 
 echo_progress_start "Installing python requirements"
-/opt/.venv/sickgear/bin/pip3 install lxml regex scandir soupsieve cheetah3 >> $log 2>&1
-chown -R ${user}: /opt/.venv/sickgear
+/opt/.venv/sickgear/bin/pip3 install lxml regex scandir soupsieve cheetah3 >> "$log" 2>&1
+chown -R "${user}": /opt/.venv/sickgear
 echo_progress_done
 
 install_rar
 
 echo_progress_start "Cloning Sickgear"
-git clone https://github.com/SickGear/SickGear.git /opt/sickgear >> ${log} 2>&1
-chown -R $user:$user /opt/sickgear
+git clone https://github.com/SickGear/SickGear.git /opt/sickgear >> "${log}" 2>&1
+chown -R "$user":"$user" /opt/sickgear
 echo_progress_done
 
 echo_progress_start "Installing systemd service"
@@ -66,7 +65,7 @@ ExecStart=/opt/.venv/sickgear/bin/python /opt/sickgear/sickgear.py -q --nolaunch
 WantedBy=multi-user.target
 SRS
 systemctl daemon-reload
-systemctl enable -q --now sickgear 2>&1 | tee -a $log
+systemctl enable -q --now sickgear 2>&1 | tee -a "$log"
 sleep 5
 # Restart because first start doesn't always generate the config.ini
 systemctl restart sickgear

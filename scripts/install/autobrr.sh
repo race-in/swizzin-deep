@@ -10,7 +10,7 @@
 _systemd() {
     type=simple
     if [[ $(systemctl --version | awk 'NR==1 {print $2}') -ge 240 ]]; then
-        type=exec
+        type="exec"
     fi
 
     echo_progress_start "Installing Systemd service"
@@ -35,7 +35,7 @@ _nginx() {
     if [[ -f /install/.nginx.lock ]]; then
         echo_progress_start "Configuring nginx for autobrr"
         bash /etc/swizzin/scripts/nginx/autobrr.sh
-        systemctl reload nginx >> $log 2>&1
+        systemctl reload nginx >> "$log" 2>&1
         echo_progress_done "Nginx configured for autobrr"
     fi
 }
@@ -100,7 +100,7 @@ CFG
 
         chown -R "$user": "/home/$user/.config/autobrr"
 
-        systemctl enable -q --now autobrr@"${user}" 2>&1 | tee -a $log
+        systemctl enable -q --now autobrr@"${user}" 2>&1 | tee -a "$log"
         echo_progress_done "Started autobrr for $user"
 
     done

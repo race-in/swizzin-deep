@@ -22,6 +22,7 @@ BTSYNCIP=$(ip route get 1 | sed -n 's/^.*src \([0-9.]*\) .*$/\1/p')
 
 function _installBTSync1() {
     echo "deb [signed-by=/usr/share/keyrings/btsync-archive-keyring.gpg] http://linux-packages.resilio.com/resilio-sync/deb resilio-sync non-free" > /etc/apt/sources.list.d/btsync.list
+    # shellcheck disable=SC2154 # log is set by sources/globals.sh
     curl -s https://linux-packages.resilio.com/resilio-sync/key.asc | gpg --dearmor > /usr/share/keyrings/btsync-archive-keyring.gpg 2>> "${log}"
     apt_update
 }
@@ -32,9 +33,9 @@ function _installBTSync3() {
 }
 function _installBTSync4() {
     cd && mkdir /home/"${MASTER}"/sync_folder
-    chown ${MASTER}: /home/${MASTER}/sync_folder
-    chmod 2775 /home/${MASTER}/sync_folder
-    chown ${MASTER}: -R /home/${MASTER}/.config/
+    chown "${MASTER}": "/home/${MASTER}/sync_folder"
+    chmod 2775 "/home/${MASTER}/sync_folder"
+    chown "${MASTER}": -R "/home/${MASTER}/.config/"
 }
 function _installBTSync5() {
     cat > /etc/resilio-sync/config.json << RSCONF
@@ -56,9 +57,9 @@ RSCONF
 }
 function _installBTSync6() {
     touch /install/.btsync.lock
-    systemctl enable -q resilio-sync 2>&1 | tee -a $log
-    systemctl start resilio-sync >> $log 2>&1
-    systemctl restart resilio-sync >> $log 2>&1
+    systemctl enable -q resilio-sync 2>&1 | tee -a "$log"
+    systemctl start resilio-sync >> "$log" 2>&1
+    systemctl restart resilio-sync >> "$log" 2>&1
 }
 
 echo_progress_start "Installing btsync keys and sources"

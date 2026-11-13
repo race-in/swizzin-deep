@@ -58,7 +58,7 @@ function _install_calibreweb() {
         exit 1
     }
 
-    wget -q "${dlurl}" -O /tmp/calibreweb.zip >> $log 2>&1 || {
+    wget -q "${dlurl}" -O /tmp/calibreweb.zip >> "$log" 2>&1 || {
         echo_error "Failed to download source code"
         exit 1
     }
@@ -66,30 +66,32 @@ function _install_calibreweb() {
     echo_progress_done
 
     echo_progress_start "Extracting archive"
-    unzip /tmp/calibreweb.zip -d /tmp/calibrewebdir >> $log 2>&1
+    unzip /tmp/calibreweb.zip -d /tmp/calibrewebdir >> "$log" 2>&1
     subdir=$(ls /tmp/calibrewebdir)
     mv /tmp/calibrewebdir/"$subdir" $calibrewebdir
     echo_progress_done
 
     echo_progress_start "Creating users and setting permissions"
-    useradd $clbWebUser --system -d "$calibrewebdir" >> $log 2>&1
+    useradd $clbWebUser --system -d "$calibrewebdir" >> "$log" 2>&1
     chown -R $clbWebUser:$clbWebUser $calibrewebdir
     chown -R ${clbWebUser}: /opt/.venv/calibreweb
     #This bit right here will ensure that the system user created will have access to the master user's folders where he might have the CalibreDB
-    usermod -a -G "${CALIBRE_LIBRARY_USER}" $clbWebUser >> $log 2>&1
+    usermod -a -G "${CALIBRE_LIBRARY_USER}" $clbWebUser >> "$log" 2>&1
     echo_progress_done
 
     echo_progress_start "Installing python dependencies"
-    sudo -u ${clbWebUser} bash -c "/opt/.venv/calibreweb/bin/pip3 install -r $calibrewebdir/requirements.txt" >> $log 2>&1
+    # shellcheck disable=SC2024 # the redirect is done by root on purpose, the log is root owned
+    sudo -u ${clbWebUser} bash -c "/opt/.venv/calibreweb/bin/pip3 install -r $calibrewebdir/requirements.txt" >> "$log" 2>&1
     #fuck ldap. all my homies hate ldap
     sed '/ldap/Id' -i $calibrewebdir/optional-requirements.txt
-    sudo -u ${clbWebUser} bash -c "/opt/.venv/calibreweb/bin/pip3 install -r $calibrewebdir/optional-requirements.txt" >> $log 2>&1
+    # shellcheck disable=SC2024 # the redirect is done by root on purpose, the log is root owned
+    sudo -u ${clbWebUser} bash -c "/opt/.venv/calibreweb/bin/pip3 install -r $calibrewebdir/optional-requirements.txt" >> "$log" 2>&1
     echo_progress_done
 }
 
 _install_kepubify() {
     echo_progress_start "Installing kepubify"
-    wget -q "https://github.com/pgaskin/kepubify/releases/download/v3.1.2/kepubify-linux-64bit" -O /tmp/kepubify >> $log 2>&1
+    wget -q "https://github.com/pgaskin/kepubify/releases/download/v3.1.2/kepubify-linux-64bit" -O /tmp/kepubify >> "$log" 2>&1
     chmod a+x /tmp/kepubify
     mv /tmp/kepubify /usr/local/bin/kepubify
     #TODO and figure out if it's needed for all cases or not
@@ -123,8 +125,8 @@ Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/u
 [Install]
 WantedBy=multi-user.target
 EOF
-    systemctl daemon-reload -q 2>&1 | tee -a $log
-    systemctl enable -q --now calibreweb.service 2>&1 | tee -a $log
+    systemctl daemon-reload -q 2>&1 | tee -a "$log"
+    systemctl enable -q --now calibreweb.service 2>&1 | tee -a "$log"
     echo_progress_done
 }
 
@@ -136,6 +138,7 @@ _post_libdir() {
 
     echo_progress_start "Setting Library to $CALIBRE_LIBRARY_PATH"
 
+    # shellcheck disable=SC2016 # $(...) is expanded by the inner bash -c, not by this shell
     timeout 25 bash -c 'while [[ "$(curl -q -L --insecure -s -o /dev/null -w ''%{http_code}'' http://127.0.0.1:8083)" != "200" ]]; do sleep 1; echo_log_only "waiting on calibreweb to come up..."; done' || {
         echo_log_only "Timed out"
         return 1

@@ -6,6 +6,7 @@
 
 # Add the jfa-go official repository and key to our installation so we can use apt-get to install it.
 echo_progress_start "Setting up jfa-go repository"
+# shellcheck disable=SC2154 # log is set by sources/globals.sh
 curl -s "https://apt.hrfee.dev/hrfee.pubkey.gpg" | gpg --dearmor > /usr/share/keyrings/jfa-go-archive-keyring.gpg 2>> "${log}"
 echo "deb [signed-by=/usr/share/keyrings/jfa-go-archive-keyring.gpg arch=$(dpkg --print-architecture)] https://apt.hrfee.dev trusty main" > /etc/apt/sources.list.d/jfa-go.list
 echo_progress_done "Repository added"

@@ -21,6 +21,7 @@ function _defiface_confirm() {
                 _selectiface
                 break
                 ;;
+            *) ;;
         esac
     done
 }
@@ -61,7 +62,8 @@ function _install_wg() {
     chown -R root:root /etc/wireguard/
     chmod -R 700 /etc/wireguard
 
-    if ! modprobe wireguard >> $log 2>&1; then
+    # shellcheck disable=SC2154 # log is set in globals.sh (sourced by box)
+    if ! modprobe wireguard >> "$log" 2>&1; then
         echo_error "Could not modprobe Wireguard, script will now terminate."
         echo_info "Please ensure a kernel headers package is installed that matches the currently running kernel.
 Currently running kernel:
@@ -85,32 +87,38 @@ Please consult the swizzin log for further info if required."
 function _mkconf_wg() {
     echo_progress_start "Configuring Wireguard for $u"
 
-    mkdir -p /home/$u/.wireguard/{server,client}
+    mkdir -p /home/"$u"/.wireguard/{server,client}
 
-    cd /home/$u/.wireguard/server
-    wg genkey | tee wg$(id -u $u).key | wg pubkey > wg$(id -u $u).pub
+    cd /home/"$u"/.wireguard/server || {
+        echo_error "Cannot cd to /home/$u/.wireguard/server"
+        return 1
+    }
+    wg genkey | tee "wg$(id -u "$u").key" | wg pubkey > "wg$(id -u "$u").pub"
 
-    cd /home/$u/.wireguard/client
-    wg genkey | tee $u.key | wg pubkey > $u.pub
+    cd /home/"$u"/.wireguard/client || {
+        echo_error "Cannot cd to /home/$u/.wireguard/client"
+        return 1
+    }
+    wg genkey | tee "${u}.key" | wg pubkey > "${u}.pub"
 
-    chown $u: /home/$u/.wireguard
-    chmod -R 700 /home/$u/.wireguard
+    chown "$u": /home/"$u"/.wireguard
+    chmod -R 700 /home/"$u"/.wireguard
 
-    serverpriv=$(cat /home/$u/.wireguard/server/wg$(id -u $u).key)
-    serverpub=$(cat /home/$u/.wireguard/server/wg$(id -u $u).pub)
-    peerpriv=$(cat /home/$u/.wireguard/client/$u.key)
-    peerpub=$(cat /home/$u/.wireguard/client/$u.pub)
+    serverpriv=$(cat "/home/$u/.wireguard/server/wg$(id -u "$u").key")
+    serverpub=$(cat "/home/$u/.wireguard/server/wg$(id -u "$u").pub")
+    peerpriv=$(cat "/home/$u/.wireguard/client/${u}.key")
+    peerpub=$(cat "/home/$u/.wireguard/client/${u}.pub")
 
-    net=$(id -u $u | cut -c 1-3)
-    sub=$(id -u $u | rev | cut -c 1 | rev)
+    net=$(id -u "$u" | cut -c 1-3)
+    sub=$(id -u "$u" | rev | cut -c 1 | rev)
     subnet=10.$net.$sub.
-    cat > /etc/wireguard/wg$(id -u $u).conf << EOWGS
+    cat > "/etc/wireguard/wg$(id -u "$u").conf" << EOWGS
 [Interface]
 Address = ${subnet}1
 SaveConfig = true
-PostUp = iptables -A FORWARD -i wg$(id -u $u) -j ACCEPT; iptables -A FORWARD -i wg$(id -u $u) -o $wgiface -m state --state RELATED,ESTABLISHED -j ACCEPT; iptables -A FORWARD -i $wgiface -o wg$(id -u $u) -m state --state RELATED,ESTABLISHED -j ACCEPT; iptables -t nat -A POSTROUTING -o $wgiface -s ${subnet}0/24 -j SNAT --to-source $ip
-PostDown = iptables -D FORWARD -i wg$(id -u $u) -j ACCEPT; iptables -D FORWARD -i wg$(id -u $u) -o $wgiface -m state --state RELATED,ESTABLISHED -j ACCEPT; iptables -D FORWARD -i $wgiface -o wg$(id -u $u) -m state --state RELATED,ESTABLISHED -j ACCEPT; iptables -t nat -D POSTROUTING -o $wgiface -s ${subnet}0/24 -j SNAT --to-source $ip
-ListenPort = 5$(id -u $u)
+PostUp = iptables -A FORWARD -i wg$(id -u "$u") -j ACCEPT; iptables -A FORWARD -i wg$(id -u "$u") -o $wgiface -m state --state RELATED,ESTABLISHED -j ACCEPT; iptables -A FORWARD -i $wgiface -o wg$(id -u "$u") -m state --state RELATED,ESTABLISHED -j ACCEPT; iptables -t nat -A POSTROUTING -o $wgiface -s ${subnet}0/24 -j SNAT --to-source $ip
+PostDown = iptables -D FORWARD -i wg$(id -u "$u") -j ACCEPT; iptables -D FORWARD -i wg$(id -u "$u") -o $wgiface -m state --state RELATED,ESTABLISHED -j ACCEPT; iptables -D FORWARD -i $wgiface -o wg$(id -u "$u") -m state --state RELATED,ESTABLISHED -j ACCEPT; iptables -t nat -D POSTROUTING -o $wgiface -s ${subnet}0/24 -j SNAT --to-source $ip
+ListenPort = 5$(id -u "$u")
 PrivateKey = $serverpriv
 
 [Peer]
@@ -127,7 +135,7 @@ EOWGS
     #PublicKey = $peerpub
     #AllowedIPs = ${subnet}2/32
 
-    cat > /home/$u/.wireguard/$u.conf << EOWGC
+    cat > "/home/$u/.wireguard/${u}.conf" << EOWGC
 [Interface]
 Address = ${subnet}2/24
 PrivateKey = $peerpriv
@@ -140,7 +148,7 @@ DNS = 1.1.1.1
 
 [Peer]
 PublicKey = $serverpub
-Endpoint = $ip:5$(id -u $u)
+Endpoint = $ip:5$(id -u "$u")
 AllowedIPs = 0.0.0.0/0
 
 # This is for if you're behind a NAT and
@@ -150,9 +158,8 @@ EOWGC
 
     chown -R "$u": /home/"$u"/.wireguard
 
-    systemctl enable -q --now wg-quick@wg$(id -u $u) 2>&1 | tee -a $log
-    if [[ $? == 0 ]]; then
-        echo_progress_done "Enabled for $u (wg$(id -u $u)). Config stored in /home/$u/.wireguard/$u.conf"
+    if systemctl enable -q --now "wg-quick@wg$(id -u "$u")" 2>&1 | tee -a "$log"; then
+        echo_progress_done "Enabled for $u (wg$(id -u "$u")). Config stored in /home/$u/.wireguard/$u.conf"
     else
         echo_error "Configuration for $u failed"
     fi
@@ -163,7 +170,6 @@ EOWGC
 #shellcheck source=sources/functions/backports
 . /etc/swizzin/sources/functions/backports
 
-distribution=$(_os_distro)
 codename=$(_os_codename)
 ip=$(ip route get 1 | sed -n 's/^.*src \([0-9.]*\) .*$/\1/p')
 if [[ -f /install/.wireguard.lock ]]; then
@@ -171,10 +177,10 @@ if [[ -f /install/.wireguard.lock ]]; then
 fi
 if [[ -z $wgiface ]]; then
     defiface=$(route | grep '^default' | grep -o '[^ ]*$')
-    IFACES=($(ip link show | grep -i broadcast | grep UP | grep qlen | cut -d: -f 2 | cut -d@ -f 1 | sed -e 's/ //g'))
+    mapfile -t IFACES < <(ip link show | grep -i broadcast | grep UP | grep qlen | cut -d: -f 2 | cut -d@ -f 1 | sed -e 's/ //g')
     #MASTER=$(ip link show | grep -i broadcast | grep -e MASTER | cut -d: -f 2| cut -d@ -f 1 | sed -e 's/ //g')
     _defiface_confirm
-    if [[ -f /install/.wireguard.lock ]]; then echo $wgiface > /install/.wireguard.lock; fi
+    if [[ -f /install/.wireguard.lock ]]; then echo "$wgiface" > /install/.wireguard.lock; fi
 fi
 
 #When a new user is being installed
@@ -186,9 +192,10 @@ fi
 
 _install_wg
 
-users=($(_get_user_list))
+mapfile -t users < <(_get_user_list)
 for u in ${users[@]}; do
     _mkconf_wg
 done
 masteruser=$(_get_master_username)
+# shellcheck disable=SC2154 # bold is set in globals.sh (sourced by box)
 echo_info "Configuration QR code can be generated with the following command:\n${bold}qrencode -t ansiutf8 < /home/$masteruser/.wireguard/$masteruser.conf"
