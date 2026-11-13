@@ -305,12 +305,11 @@ function build_deluge() {
     fi
 
     rm_if_exists /tmp/deluge
-    git clone -b "${deluge_git_branch}" git://deluge-torrent.org/deluge.git /tmp/deluge >> "${log}" 2>&1 || {
-        echo_warn "Cloning Deluge from deluge-torrent.org failed, attempting github backup."
-        git clone -b "${deluge_git_branch}" https://github.com/deluge-torrent/deluge/ >> "${log}" 2>&1 || {
-            echo_error "Cloning Deluge from github failed. Setup will now exit"
-            exit 1
-        }
+    # The git:// endpoint of deluge-torrent.org no longer accepts connections,
+    # clone from GitHub instead.
+    git clone -b "${deluge_git_branch}" https://github.com/deluge-torrent/deluge.git /tmp/deluge >> "${log}" 2>&1 || {
+        echo_error "Cloning Deluge from github failed. Setup will now exit"
+        exit 1
     }
     cd /tmp/deluge || {
         echo_error "Cannot cd to /tmp/deluge"

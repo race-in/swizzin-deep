@@ -163,7 +163,9 @@ function build_xmlrpc-c_old() {
     . /etc/swizzin/sources/functions/utils
     rm_if_exists "/tmp/xmlrpc-c"
     rm_if_exists "/tmp/dist/xmlrpc-c "
-    svn checkout svn://svn.code.sf.net/p/xmlrpc-c/code/stable@3212 /tmp/xmlrpc-c >> "$log" 2>&1
+    # Use svn-over-https; the svn:// protocol needs port 3690, which most
+    # providers block.
+    svn checkout https://svn.code.sf.net/p/xmlrpc-c/code/stable@3212 /tmp/xmlrpc-c >> "$log" 2>&1
     cd /tmp/xmlrpc-c || {
         echo_error "Cannot cd to /tmp/xmlrpc-c"
         return 1

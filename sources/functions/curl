@@ -63,7 +63,10 @@ build_curl() {
     # shellcheck source=sources/functions/utils
     . /etc/swizzin/sources/functions/utils
 
-    wget -q -O /tmp/curl.zip https://salsa.debian.org/debian/curl/-/archive/debian/bookworm-backports/curl-debian-bookworm-backports.zip >> "${log}" 2>&1 || {
+    # salsa.debian.org answers 406 to the default wget/curl user agents, so ask
+    # for the archive with a browser user agent.
+    wget -q --user-agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
+        -O /tmp/curl.zip "https://salsa.debian.org/debian/curl/-/archive/debian/bookworm-backports/curl-debian-bookworm-backports.zip" >> "${log}" 2>&1 || {
         echo_error "There was an error downloading curl! Please check the log for more info"
         rm /tmp/curl.zip >> "${log}" 2>&1
         exit 1
