@@ -4,7 +4,6 @@
 #
 #   deluge.addHost.py
 #
-#
 
 import hashlib
 import sys
