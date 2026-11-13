@@ -12,7 +12,7 @@ function _setdisk() {
     if [[ -z $1 ]]; then
         echo "======================================================================================"
         echo "Disk Space MUST be in MB/GB/TB or max - Do not attempt to add decimals in space settings,"
-        echo "Example - Good: 711GB, 2TB,, or max"
+        echo "Example - Good: 711GB, 2TB, max"
         echo "Example - Bad: 711.5GB, 2.5TB, or MAX"
         echo "You can also use setdisk username size to set the values non-interactively"
         echo "Example - 'setdisk myuser 20GB'"
@@ -86,9 +86,10 @@ function _setdisk() {
     esac
 }
 
+# FIX: was `return 1` at top-level which is invalid in a directly-executed script
 if [[ -f /install/.quota.lock ]]; then
-    _setdisk "$1" "$2"
+    _setdisk "$1" "$2" || exit 1
 else
     echo "Quota not installed"
-    return 1
+    exit 1
 fi
