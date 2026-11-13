@@ -47,7 +47,10 @@ function _source_setup() {
         echo "Best of luck and please follow the contribution guidelines cheerio"
     else
         echo -e "...\tCloning swizzin repo to localhost"
-        git clone https://github.com/swizzin/swizzin.git /etc/swizzin >> "${log}" 2>&1
+        # Install from this fork, not from upstream swizzin. Override the URL to
+        # install from a different remote (e.g. a mirror or a local git server).
+        SWIZZIN_REPO_URL="${SWIZZIN_REPO_URL:-https://github.com/race-in/swizzin-deep.git}"
+        git clone "$SWIZZIN_REPO_URL" /etc/swizzin >> "${log}" 2>&1
         echo -e "\tSwizzin cloned!"
     fi
 
