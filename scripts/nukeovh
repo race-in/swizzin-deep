@@ -4,7 +4,6 @@ grsec=$(uname -a | grep -i grs)
 if [[ -n $grsec ]]; then
     echo_info "Your server is currently running with kernel version: $(uname -r)\nWhile it is not required to switch, kernels with grsec are not recommend due to conflicts in the panel and other packages."
     if ask "Would you like swizzin to install the distribution kernel?" Y; then
-        # echo_info "Your distribution's default kernel will be installed. A reboot will be required."
         if [[ $DISTRO == Ubuntu ]]; then
             apt-get install -q -y linux-image-generic >> "${log}" 2>&1
         elif [[ $DISTRO == Debian ]]; then
