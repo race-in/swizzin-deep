@@ -7,6 +7,7 @@ fi
 if ! grep -q apt.ombi.app /etc/apt/sources.list.d/ombi.list; then
 
     echo_info "Upgrading ombi apt sources"
+    # shellcheck disable=SC2154 # log is set by sources/globals.sh
     curl -sSL https://apt.ombi.app/pub.key | gpg --dearmor > /usr/share/keyrings/ombi-archive-keyring.gpg 2>> "${log}"
     echo "deb [signed-by=/usr/share/keyrings/ombi-archive-keyring.gpg] https://apt.ombi.app/master jessie main" > /etc/apt/sources.list.d/ombi.list
 

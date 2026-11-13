@@ -13,11 +13,13 @@ export DEBIAN_FRONTEND=noninteractive
 . /etc/swizzin/sources/functions/rtorrent
 #shellcheck source=sources/functions/curl
 . /etc/swizzin/sources/functions/curl
-whiptail_rtorrent
+whiptail_rtorrent "$@"
 
+# shellcheck disable=SC2034 # user is set for parity with install/rtorrent.sh; not read in this script
 user=$(cut -d: -f1 < /root/.master.info)
+# shellcheck disable=SC2034 # legacy rutorrent path kept for parity with the install/remove scripts
 rutorrent="/srv/rutorrent/"
-users=($(cut -d: -f1 < /etc/htpasswd))
+mapfile -t users < <(cut -d: -f1 < /etc/htpasswd)
 
 if [[ -n $noexec ]]; then
     mount -o remount,exec /tmp
@@ -64,6 +66,6 @@ if [[ -n $noexec ]]; then
 fi
 
 for u in "${users[@]}"; do
-    if grep -q localhost /home/$u/.rtorrent.rc; then sed -i 's/localhost/127.0.0.1/g' /home/$u/.rtorrent.rc; fi
-    systemctl try-restart rtorrent@${u}
+    if grep -q localhost "/home/$u/.rtorrent.rc"; then sed -i 's/localhost/127.0.0.1/g' "/home/$u/.rtorrent.rc"; fi
+    systemctl try-restart "rtorrent@${u}"
 done

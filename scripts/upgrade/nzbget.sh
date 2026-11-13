@@ -5,7 +5,7 @@
 . /etc/swizzin/sources/functions/nzbget
 
 if [[ -f /install/.nzbget.lock ]]; then
-    if dpkg --compare-versions "$(/home/$(_get_master_username)/nzbget/nzbget --version | cut -d: -f2 | tr -d ' ')" le 21.1; then
+    if dpkg --compare-versions "$(/home/"$(_get_master_username)"/nzbget/nzbget --version | cut -d: -f2 | tr -d ' ')" le 21.1; then
         echo_progress_start "Upgrading nzbget to latest."
 
         users=$(_get_user_list)
@@ -24,9 +24,9 @@ if [[ -f /install/.nzbget.lock ]]; then
 
         for u in ${users}; do
             echo_progress_start "Upgrading nzbget for $u"
-            sh nzbget-latest-bin-linux.run --destdir /home/$u/nzbget >> $log 2>&1
-            chown -R $u:$u /home/$u/nzbget
-            systemctl try-restart nzbget@${u} >> $log 2>&1
+            sh nzbget-latest-bin-linux.run --destdir "/home/$u/nzbget" >> "$log" 2>&1
+            chown -R "$u:$u" "/home/$u/nzbget"
+            systemctl try-restart "nzbget@${u}" >> "$log" 2>&1
             echo_progress_done "Nzbget upgraded for $u"
         done
 

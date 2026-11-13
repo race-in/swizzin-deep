@@ -4,14 +4,16 @@ function _yarnlounge() {
     #shellcheck source=sources/functions/npm
     . /etc/swizzin/sources/functions/npm
 
+    # shellcheck disable=SC2154 # active is never assigned here; this stop block is inert (the script stops lounge itself)
     if [[ $active == "active" ]]; then
         systemctl stop lounge
     fi
     npm uninstall --quiet -g thelounge --save >> /dev/null 2>&1
-    yarn --non-interactive global add thelounge >> $log 2>&1
-    yarn --non-interactive cache clean >> $log 2>&1
+    yarn --non-interactive global add thelounge >> "$log" 2>&1
+    yarn --non-interactive cache clean >> "$log" 2>&1
     chown -R lounge: /opt/lounge
-    sudo -u lounge bash -c "thelounge install thelounge-theme-zenburn" >> ${log} 2>&1
+    # shellcheck disable=SC2024 # redirect to the root-owned log is intentional
+    sudo -u lounge bash -c "thelounge install thelounge-theme-zenburn" >> "${log}" 2>&1
     # Replace with new execstart line
     sed -i "s|ExecStart=.*|ExecStart=$(which thelounge) start|g" /etc/systemd/system/lounge.service
     systemctl daemon-reload

@@ -19,6 +19,7 @@ if [[ -d /opt/.venv/nzbhydra ]]; then
                 majorupgrade=True
                 break
                 ;;
+            *) ;;
         esac
     done
     if [[ $migrate == True ]]; then
@@ -33,11 +34,12 @@ if [[ -d /opt/.venv/nzbhydra ]]; then
                     database=false
                     break
                     ;;
+                *) ;;
             esac
         done
-        oldport=$(grep \"port\" /home/${username}/.config/nzbhydra/settings.cfg | grep -oP '\d+')
-        oldbase=$(grep \"urlBase\" /home/${username}/.config/nzbhydra/settings.cfg | cut -d\" -f4)
-        oldbaseconv=$(echo $oldbase | sed 's|/|%2F|g')
+        oldport=$(grep \"port\" "/home/${username}/.config/nzbhydra/settings.cfg" | grep -oP '\d+')
+        oldbase=$(grep \"urlBase\" "/home/${username}/.config/nzbhydra/settings.cfg" | cut -d\" -f4)
+        oldbaseconv=${oldbase//\//%2F}
         if [[ ! $active == "active" ]]; then
             systemctl start nzbhydra
             sleep 5
@@ -52,6 +54,7 @@ fi
 #ip=$(ip route get 1 | sed -n 's/^.*src \([0-9.]*\) .*$/\1/p')
 
 LIST='default-jre-headless unzip jq'
+# shellcheck disable=SC2086 # intentional split: apt_install takes a package list
 apt_install $LIST
 
 if ! dpkg -s jq > /dev/null 2>&1; then
@@ -61,16 +64,22 @@ fi
 
 if [[ $migrate == True ]]; then
     version="2.10.2"
-    cd /opt
+    cd /opt || {
+        echo_error "Cannot cd to /opt"
+        exit 1
+    }
     mkdir nzbhydra2
-    cd nzbhydra2
-    wget -O nzbhydra2.zip https://github.com/theotherp/nzbhydra2/releases/download/v${version}/nzbhydra2-${version}-linux.zip >> ${log} 2>&1
-    unzip nzbhydra2.zip >> ${log} 2>&1
+    cd nzbhydra2 || {
+        echo_error "Cannot cd to /opt/nzbhydra2"
+        exit 1
+    }
+    wget -O nzbhydra2.zip https://github.com/theotherp/nzbhydra2/releases/download/v${version}/nzbhydra2-${version}-linux.zip >> "${log}" 2>&1
+    unzip nzbhydra2.zip >> "${log}" 2>&1
     chmod +x nzbhydra2
     rm -f nzbhydra2.zip
-    chown -R ${username}: /opt/nzbhydra2
+    chown -R "${username}:" /opt/nzbhydra2
     echo_progress_start "Initializing NZBHydra2"
-    sudo -u ${username} bash -c "cd /opt/nzbhydra2; /opt/nzbhydra2/nzbhydra2 --daemon --nobrowser --datafolder /home/${username}/.config/nzbhydra2 --nopidfile > /dev/null 2>&1"
+    sudo -u "${username}" bash -c "cd /opt/nzbhydra2; /opt/nzbhydra2/nzbhydra2 --daemon --nobrowser --datafolder /home/${username}/.config/nzbhydra2 --nopidfile > /dev/null 2>&1"
     #if [[ -f /install/.nginx.lock ]]; then
     #    message="Go to nzbhydra2 (http://${ip}:5076) and follow the migration instructions. When prompted, your old NZBHydra install should be located at http://127.0.0.1:5075/nzbhydra. Press enter once migration is complete."
     #else
@@ -82,32 +91,35 @@ if [[ $migrate == True ]]; then
 
     echo_progress_start "Starting migration"
     result=$(curl -s "http://127.0.0.1:5076/internalapi/migration/url?baseurl=http:%2F%2F127.0.0.1:${oldport}${oldbaseconv}&doMigrateDatabase=${database}")
-    errors=$(echo $result | jq .error)
+    errors=$(echo "$result" | jq .error)
     if [[ $errors == null ]]; then
-        echo_info "  configMigrated: $(echo $result | jq .configMigrated)"
+        echo_info "  configMigrated: $(echo "$result" | jq .configMigrated)"
         if [[ $database == true ]]; then
-            echo_info "  databaseMigrated: $(echo $result | jq .databaseMigrated)"
+            echo_info "  databaseMigrated: $(echo "$result" | jq .databaseMigrated)"
         fi
 
         echo_progress_done "No errors reported!"
         #shellcheck disable=SC2162
         echo_query "Press enter to continue setting up NZBHydra2"
-        read
+        read -r
     else
         echo_error "Something appears to have gone wrong during the migration. Upgrader will now exit.
 Error: $errors"
-        cd /opt
+        cd /opt || {
+            echo_error "Cannot cd to /opt"
+            exit 1
+        }
         rm -rf nzbhydra2
-        rm -rf /home/${username}/.config/nzbhydra2
-        killall nzbhydra2 >> ${log} 2>&1
+        rm -rf "/home/${username}/.config/nzbhydra2"
+        killall nzbhydra2 >> "${log}" 2>&1
         exit 1
     fi
 
-    killall nzbhydra2 >> ${log} 2>&1
+    killall nzbhydra2 >> "${log}" 2>&1
     sleep 10
     echo_progress_done "Migration complete"
     echo_query "Press enter to continue setting up NZBHydra2" "enter"
-    read
+    read -r
 fi
 
 if [[ $majorupgrade == True ]]; then
@@ -149,19 +161,25 @@ fi
 
 localversion=$(/opt/nzbhydra2/nzbhydra2 --version 2> /dev/null | grep -oP 'v\d+\.\d+\.\d+')
 latest=$(curl -s https://api.github.com/repos/theotherp/nzbhydra2/releases/latest | grep -E "browser_download_url" | grep linux | head -1 | cut -d\" -f 4)
-latestversion=$(echo $latest | grep -oP 'v\d+\.\d+\.\d+')
-if [[ -z $localversion ]] || dpkg --compare-versions ${localversion#v} lt ${latestversion#v}; then
+latestversion=$(echo "$latest" | grep -oP 'v\d+\.\d+\.\d+')
+if [[ -z $localversion ]] || dpkg --compare-versions "${localversion#v}" lt "${latestversion#v}"; then
     echo_progress_start "Upgrading NZBHydra to ${latestversion}"
-    cd /opt
+    cd /opt || {
+        echo_error "Cannot cd to /opt"
+        exit 1
+    }
     rm_if_exists /opt/nzbhydra2
     mkdir nzbhydra2
-    cd nzbhydra2
-    wget -O nzbhydra2.zip ${latest} >> ${log} 2>&1
-    unzip nzbhydra2.zip >> ${log} 2>&1
+    cd nzbhydra2 || {
+        echo_error "Cannot cd to /opt/nzbhydra2"
+        exit 1
+    }
+    wget -O nzbhydra2.zip "${latest}" >> "${log}" 2>&1
+    unzip nzbhydra2.zip >> "${log}" 2>&1
     rm -f nzbhydra2.zip
 
     chmod +x nzbhydra2 nzbhydra2wrapperPy3.py
-    chown -R ${username}: /opt/nzbhydra2
+    chown -R "${username}:" /opt/nzbhydra2
 
     if [[ $active == "active" ]]; then
         systemctl restart nzbhydra
