@@ -20,10 +20,10 @@ location /shell/ {
 }
 RAD
 fi
-if [[ -z $(grep disable-ssl /etc/default/shellinabox) ]]; then
+if ! grep -q disable-ssl /etc/default/shellinabox; then
     sed -i 's/SHELLINABOX_ARGS="/SHELLINABOX_ARGS="--disable-ssl /g' /etc/default/shellinabox
 fi
-if [[ -z $(grep localhost-only /etc/default/shellinabox) ]]; then
+if ! grep -q localhost-only /etc/default/shellinabox; then
     sed -i 's/SHELLINABOX_ARGS="/SHELLINABOX_ARGS="--localhost-only /g' /etc/default/shellinabox
 fi
 

@@ -29,9 +29,10 @@ EOF
 readarray -t users < <(_get_user_list)
 for user in "${users[@]}"; do
     if [[ ! -f /etc/nginx/conf.d/${user}.flood.conf ]]; then
-        . /home/${user}/.config/flood/env || { echo_warn "Could not determine flood port for ${user}"; }
+        # shellcheck disable=SC1090 # per-user env file path cannot be resolved statically
+        . "/home/${user}/.config/flood/env" || { echo_warn "Could not determine flood port for ${user}"; }
         echo_progress_start "Creating flood nginx upstream for $user"
-        cat > /etc/nginx/conf.d/${user}.flood.conf << FLUPS
+        cat > "/etc/nginx/conf.d/${user}.flood.conf" << FLUPS
 upstream $user.flood {
   server 127.0.0.1:${FLOOD_PORT};
 }
@@ -41,4 +42,4 @@ done
 
 sed -i '/ExecStart=/ s/$/ --baseuri=\/flood/' /etc/systemd/system/flood@.service
 systemctl daemon-reload
-systemctl try-restart flood@${user}
+systemctl try-restart "flood@${user}"

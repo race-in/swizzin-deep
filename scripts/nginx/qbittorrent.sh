@@ -2,7 +2,7 @@
 # nginx setup for qbittorrent
 #shellcheck source=sources/functions/utils
 . /etc/swizzin/sources/functions/utils
-users=($(_get_user_list))
+readarray -t users < <(_get_user_list)
 
 if [[ ! -f /etc/nginx/apps/qbtindex.conf ]]; then
     cat > /etc/nginx/apps/qbtindex.conf << DIN
@@ -53,20 +53,20 @@ QBTN
 fi
 
 for user in ${users[@]}; do
-    port=$(grep 'WebUI\\Port' /home/${user}/.config/qBittorrent/qBittorrent.conf | cut -d= -f2)
-    cat > /etc/nginx/conf.d/${user}.qbittorrent.conf << QBTUC
+    port=$(grep 'WebUI\\Port' "/home/${user}/.config/qBittorrent/qBittorrent.conf" | cut -d= -f2)
+    cat > "/etc/nginx/conf.d/${user}.qbittorrent.conf" << QBTUC
 upstream ${user}.qbittorrent {
   server 127.0.0.1:${port};
 }
 QBTUC
-    if grep -q 'WebUI\\Address=\*' /home/${user}/.config/qBittorrent/qBittorrent.conf; then
-        active=$(systemctl is-active qbittorrent@${user})
+    if grep -q 'WebUI\\Address=\*' "/home/${user}/.config/qBittorrent/qBittorrent.conf"; then
+        active=$(systemctl is-active "qbittorrent@${user}")
         if [[ $active == "active" ]]; then
-            systemctl stop qbittorrent@${user} >> ${log} 2>&1
+            systemctl stop "qbittorrent@${user}" >> "${log}" 2>&1
         fi
-        sed -i 's|WebUI\\Address=.*|WebUI\\Address=127.0.0.1|g' /home/${user}/.config/qBittorrent/qBittorrent.conf
+        sed -i 's|WebUI\\Address=.*|WebUI\\Address=127.0.0.1|g' "/home/${user}/.config/qBittorrent/qBittorrent.conf"
         if [[ $active == "active" ]]; then
-            systemctl start qbittorrent@${user} >> ${log} 2>&1
+            systemctl start "qbittorrent@${user}" >> "${log}" 2>&1
         fi
     fi
 done

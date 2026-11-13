@@ -4,7 +4,7 @@
 
 #shellcheck source=sources/functions/utils
 . /etc/swizzin/sources/functions/utils
-users=($(_get_user_list))
+readarray -t users < <(_get_user_list)
 
 cat > /etc/nginx/apps/netronome.conf << 'netronome'
 location /netronome/ {
@@ -18,8 +18,8 @@ location /netronome/ {
 netronome
 
 for user in ${users[@]}; do
-    port=$(grep 'port =' /home/${user}/.config/netronome/config.toml | awk '{ print $3 }')
-    cat > /etc/nginx/conf.d/${user}.netronome.conf << netronomeUC
+    port=$(grep 'port =' "/home/${user}/.config/netronome/config.toml" | awk '{ print $3 }')
+    cat > "/etc/nginx/conf.d/${user}.netronome.conf" << netronomeUC
 upstream ${user}.netronome {
   server 127.0.0.1:${port};
 }
@@ -30,6 +30,6 @@ netronomeUC
 
     # Restart netronome for all user after changing port
     echo_log_only "Restarting netronome for ${user}"
-    systemctl try-restart netronome@${user}
+    systemctl try-restart "netronome@${user}"
 
 done

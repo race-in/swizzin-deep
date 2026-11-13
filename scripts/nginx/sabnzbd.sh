@@ -26,8 +26,8 @@ location /sabnzbd {
 SAB
 fi
 
-sed -i "s|^host = .*|host = 127.0.0.1|g" /home/${user}/.config/sabnzbd/sabnzbd.ini
-sed -i 's/^\s*url_base\s*=\s*""\s*$/url_base = "\/sabnzbd"/' /home/${user}/.config/sabnzbd/sabnzbd.ini
+sed -i "s|^host = .*|host = 127.0.0.1|g" "/home/${user}/.config/sabnzbd/sabnzbd.ini"
+sed -i 's/^\s*url_base\s*=\s*""\s*$/url_base = "\/sabnzbd"/' "/home/${user}/.config/sabnzbd/sabnzbd.ini"
 
 if [[ $active == "active" ]]; then
     systemctl start sabnzbd

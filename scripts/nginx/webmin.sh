@@ -20,6 +20,7 @@ location /webmin/ {
 WEBC
 fi
 
+# shellcheck disable=SC2154 # referers is only ever supplied from the environment; unset writes an empty value
 cat >> /etc/webmin/config << EOF
 webprefix=/webmin
 webprefixnoredir=1

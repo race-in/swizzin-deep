@@ -4,7 +4,7 @@
 
 #shellcheck source=sources/functions/utils
 . /etc/swizzin/sources/functions/utils
-users=($(_get_user_list))
+readarray -t users < <(_get_user_list)
 
 cat > /etc/nginx/apps/autobrr.conf << 'AUTOBRR'
 location /autobrr/ {
@@ -20,8 +20,8 @@ location /autobrr/ {
 AUTOBRR
 
 for user in ${users[@]}; do
-    port=$(grep 'port =' /home/${user}/.config/autobrr/config.toml | awk '{ print $3 }')
-    cat > /etc/nginx/conf.d/${user}.autobrr.conf << AUTOBRRUC
+    port=$(grep 'port =' "/home/${user}/.config/autobrr/config.toml" | awk '{ print $3 }')
+    cat > "/etc/nginx/conf.d/${user}.autobrr.conf" << AUTOBRRUC
 upstream ${user}.autobrr {
   server 127.0.0.1:${port};
 }
@@ -32,6 +32,6 @@ AUTOBRRUC
 
     # Restart autobrr for all user after changing port
     echo_log_only "Restarting autobrr for ${user}"
-    systemctl try-restart autobrr@${user}
+    systemctl try-restart "autobrr@${user}"
 
 done

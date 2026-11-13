@@ -4,7 +4,7 @@
 
 #shellcheck source=sources/functions/utils
 . /etc/swizzin/sources/functions/utils
-users=($(_get_user_list))
+readarray -t users < <(_get_user_list)
 
 cat > /etc/nginx/apps/qui.conf << 'qui'
 # Redirect /qui to /qui/ for proper SPA routing
@@ -27,8 +27,8 @@ location /qui/ {
 qui
 
 for user in ${users[@]}; do
-    port=$(grep 'port =' /home/${user}/.config/qui/config.toml | awk '{ print $3 }')
-    cat > /etc/nginx/conf.d/${user}.qui.conf << quiUC
+    port=$(grep 'port =' "/home/${user}/.config/qui/config.toml" | awk '{ print $3 }')
+    cat > "/etc/nginx/conf.d/${user}.qui.conf" << quiUC
 upstream ${user}.qui {
   server 127.0.0.1:${port};
 }
@@ -39,6 +39,6 @@ quiUC
 
     # Restart qui for all user after changing port
     echo_log_only "Restarting qui for ${user}"
-    systemctl try-restart qui@${user}
+    systemctl try-restart "qui@${user}"
 
 done

@@ -8,10 +8,10 @@
 #   changes/dates in source files. Any modifications to our software
 #   including (via compiler) GPL-licensed code must also be made available
 #   under the GPL along with build & install instructions.
-users=($(cut -d: -f1 < /etc/htpasswd))
+readarray -t users < <(cut -d: -f1 < /etc/htpasswd)
 
 if [[ -n $1 ]]; then
-    users=($1)
+    users=("$1")
 fi
 
 if [[ ! -f /etc/nginx/apps/dindex.conf ]]; then
@@ -30,23 +30,23 @@ DIN
 fi
 
 for u in "${users[@]}"; do
-    if [[ -f /etc/nginx/apps/${u}.dindex.conf ]]; then rm -f /etc/nginx/apps/${u}.dindex.conf; fi
+    if [[ -f /etc/nginx/apps/${u}.dindex.conf ]]; then rm -f "/etc/nginx/apps/${u}.dindex.conf"; fi
 
-    isactive=$(systemctl is-active deluge-web@$u)
+    isactive=$(systemctl is-active "deluge-web@$u")
     if [[ $isactive == "active" ]]; then
-        systemctl stop deluge-web@$u
+        systemctl stop "deluge-web@$u"
     fi
 
-    sed -i 's/"interface": "0.0.0.0"/"interface": "127.0.0.1"/g' /home/$u/.config/deluge/web.conf
-    sed -i 's/"https": true/"https": false/g' /home/$u/.config/deluge/web.conf
+    sed -i 's/"interface": "0.0.0.0"/"interface": "127.0.0.1"/g' "/home/$u/.config/deluge/web.conf"
+    sed -i 's/"https": true/"https": false/g' "/home/$u/.config/deluge/web.conf"
 
     if [[ $isactive == "active" ]]; then
-        systemctl start deluge-web@$u
+        systemctl start "deluge-web@$u"
     fi
 
     if [[ ! -f /etc/nginx/conf.d/${u}.deluge.conf ]]; then
-        DWPORT=$(grep port /home/$u/.config/deluge/web.conf | cut -d: -f2 | sed 's/ //g' | sed 's/,//g')
-        cat > /etc/nginx/conf.d/${u}.deluge.conf << DUPS
+        DWPORT=$(grep port "/home/$u/.config/deluge/web.conf" | cut -d: -f2 | sed 's/ //g' | sed 's/,//g')
+        cat > "/etc/nginx/conf.d/${u}.deluge.conf" << DUPS
 upstream $u.deluge {
   server 127.0.0.1:$DWPORT;
 }
