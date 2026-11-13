@@ -43,7 +43,7 @@ function _function() {
 
 function _install() {
     installa=()
-    locks=($(find /usr/local/bin/swizzin/install -type f -printf "%f\n" | cut -d "." -f 1 | sort -d))
+    mapfile -t locks < <(find /usr/local/bin/swizzin/install -type f -printf "%f\n" | cut -d "." -f 1 | sort -d)
     for i in "${locks[@]}"; do
         app=${i}
         if [[ ! -f /install/.$app.lock ]]; then
@@ -64,7 +64,7 @@ function _install() {
 
 function _remove() {
     removea=()
-    locks=($(find /usr/local/bin/swizzin/remove -type f -printf "%f\n" | cut -d "." -f 1 | sort -d))
+    mapfile -t locks < <(find /usr/local/bin/swizzin/remove -type f -printf "%f\n" | cut -d "." -f 1 | sort -d)
     for i in "${locks[@]}"; do
         app=${i}
         if [[ -f /install/.$app.lock ]]; then
@@ -76,7 +76,7 @@ function _remove() {
     for result in "${result[@]}"; do
         # FIX: echo_info does not support -e; the original was printing "-e Removing ..." literally
         echo_info "Removing ${result}"
-        bash /usr/local/bin/swizzin/remove/${result}.sh
+        bash "/usr/local/bin/swizzin/remove/${result}.sh"
     done
     rm results
     _function
@@ -85,7 +85,7 @@ function _remove() {
 function _cli() {
     arg=("$@")
     packages=("${arg[@]:1}")
-    repo=($(find /usr/local/bin/swizzin/install -type f -printf "%f\n" | cut -d "." -f 1))
+    mapfile -t repo < <(find /usr/local/bin/swizzin/install -type f -printf "%f\n" | cut -d "." -f 1)
     for app in "${packages[@]}"; do
         if [[ -f /install/.${app}.lock ]]; then
             echo_warn "Package $app already installed"
@@ -93,7 +93,7 @@ function _cli() {
             if [[ "${repo[*]}" =~ $app ]]; then
                 echo_info "Installing $app"
                 echo_docs "applications/$app"
-                bash /usr/local/bin/swizzin/install/$app.sh
+                bash "/usr/local/bin/swizzin/install/$app.sh"
             else
                 echo_warn "Package $app not found"
             fi
@@ -108,13 +108,14 @@ function _clr() {
         if [[ -f /install/.$app.lock ]]; then
             schedule_remove="true"
             echo_info "Removing $app"
-            bash /usr/local/bin/swizzin/remove/$app.sh
+            bash "/usr/local/bin/swizzin/remove/$app.sh"
             echo_success "$app removed"
         else
             echo_warn "Package $app not installed"
         fi
     done
     if [[ $schedule_remove = "true" ]]; then
+        # shellcheck disable=SC2119 # apt_autoremove takes no args here; forwarding "$@" would treat box args as apt options
         apt_autoremove
     fi
 }
@@ -159,9 +160,9 @@ We URGE you to migrate to a supported release if/while you still have the chance
         # FIX: compute the correct reset target so that develop branch tracks origin/develop
         # (the original code hardcoded origin/master and silently left develop stale).
         case "$SWIZ_GIT_REF" in
-            develop)  reset_target="origin/develop" ;;
-            tags/*)   reset_target="$SWIZ_GIT_REF" ;;
-            *)        reset_target="origin/master" ;;
+            develop) reset_target="origin/develop" ;;
+            tags/*) reset_target="$SWIZ_GIT_REF" ;;
+            *) reset_target="origin/master" ;;
         esac
 
         git -C /etc/swizzin checkout "${SWIZ_GIT_REF:-master}" >> "$log" 2>&1 ||
@@ -198,7 +199,7 @@ We URGE you to migrate to a supported release if/while you still have the chance
 function _upgrade() {
     arg=("$@")
     packages=("${arg[@]:1}")
-    repo=($(find /usr/local/bin/swizzin/upgrade -type f -printf "%f\n" | cut -d "." -f 1))
+    mapfile -t repo < <(find /usr/local/bin/swizzin/upgrade -type f -printf "%f\n" | cut -d "." -f 1)
     for app in "${packages[@]}"; do
         if [[ "${repo[*]}" =~ $app ]]; then
             bash /usr/local/bin/swizzin/upgrade/"$app".sh || exit 1
@@ -213,10 +214,10 @@ function _help() {
     sgformat="${bold}%-15s${normal}"
     spacing=$(echo $'\t' | pr -Te15)
 
-    echo -e "Usage:\t$(basename $0)"
-    echo -e "\t$(basename $0) [ install | remove | upgrade ] ${bold}pkg1${normal} [ pkg2 ... ]"
-    echo -e "\t$(basename $0) [ adduser | deluser | chpasswd ] ${bold}username${normal} [ password ]"
-    echo -e "\t$(basename $0) [ list | update ]"
+    echo -e "Usage:\t$(basename "$0")"
+    echo -e "\t$(basename "$0") [ install | remove | upgrade ] ${bold}pkg1${normal} [ pkg2 ... ]"
+    echo -e "\t$(basename "$0") [ adduser | deluser | chpasswd ] ${bold}username${normal} [ password ]"
+    echo -e "\t$(basename "$0") [ list | update ]"
     echo
     echo -e "Note: Only install and remove functions accept package arguments. List and update must be run without modifiers\n" | fmt --goal=66 --tagged-paragraph
     echo
@@ -252,13 +253,14 @@ function _help() {
 }
 
 function _list() {
-    repo=($(find /usr/local/bin/swizzin/install -type f -printf "%f\n" | cut -d. -f 1 | sort -d))
+    mapfile -t repo < <(find /usr/local/bin/swizzin/install -type f -printf "%f\n" | cut -d. -f 1 | sort -d)
     locale=/etc/swizzin/sources/lang_en
     for app in "${repo[@]}"; do
         sgformat="${bold}%-15s${normal}"
         spacing=$(echo $'\t' | pr -Te15)
-        description=$(grep -i -m 1 \\\[\'$app $locale | cut -d= -f2 | sed "s/ '//g" | sed "s/';//g" | sed "s/\\\'/'/g")
+        description=$(grep -i -m 1 \\\[\'"$app" $locale | cut -d= -f2 | sed "s/ '//g" | sed "s/';//g" | sed "s/\\\'/'/g")
         if [[ -z $description ]]; then description="Description missing"; fi
+        # shellcheck disable=SC2059 # sgformat is an intentional printf format template
         printf "${sgformat}" "$app"
         echo -e "${description}\n" | fmt --goal=50 | sed -e "2,\$s/^/$spacing/"
     done
@@ -383,13 +385,13 @@ function _deluser() {
         if [[ -f /install/.${app}.lock ]]; then
             case $app in
                 autodl)
-                    systemctl disable --now irssi@${user}
+                    systemctl disable --now "irssi@${user}"
                     ;;
                 deluge)
                     app="{deluged,deluge-web}"
-                    rm -rf /etc/nginx/conf.d/${user}.deluge.conf
-                    eval systemctl disable ${app}@${user}
-                    eval systemctl stop ${app}@${user}
+                    rm -rf "/etc/nginx/conf.d/${user}.deluge.conf"
+                    eval systemctl disable "${app}@${user}"
+                    eval systemctl stop "${app}@${user}"
                     ;;
                 lounge)
                     su -s /bin/sh lounge -c "thelounge remove ${user}" > /dev/null
@@ -400,17 +402,17 @@ function _deluser() {
                     ;;
                 rutorrent)
                     if [[ ! -f /install/.rutorrent.lock ]]; then touch /install/.rutorrent.lock; fi
-                    rm -rf /srv/rutorrent/conf/users/${user}
-                    rm -rf /srv/rutorrent/share/users/${user}
-                    rm -f /etc/nginx/apps/${user}*
+                    rm -rf "/srv/rutorrent/conf/users/${user}"
+                    rm -rf "/srv/rutorrent/share/users/${user}"
+                    rm -f /etc/nginx/apps/"${user}"*
                     ;;
                 wireguard)
-                    rm -rf /home/${user}/.wireguard
+                    rm -rf "/home/${user}/.wireguard"
                     systemctl disable --now wg-quick@wg"$(id -u "$user")"
                     ;;
                 *)
-                    systemctl disable ${app}@${user}
-                    systemctl stop ${app}@${user}
+                    systemctl disable "${app}@${user}"
+                    systemctl stop "${app}@${user}"
                     ;;
             esac
         fi
@@ -420,18 +422,18 @@ function _deluser() {
         apt_install lsof
     fi
 
-    lsof -t /home/${user} | xargs -I % kill -9 %
-    deluser --force --remove-home ${user} >> "$log" 2>&1
-    groupdel ${user} >> "$log" 2>&1
-    rm -f /etc/htpasswd.d/htpasswd.${user}
-    htpasswd -D /etc/htpasswd ${user} >> "$log" 2>&1
-    rm -f /etc/tmpfiles.d/${user}.conf
-    rm -f /etc/nginx/conf.d/${user}*
-    rm -f /etc/sudoers.d/${user}
-    rm -rf /run/screen/S-${user}
-    rm -rf /var/run/${user}
+    lsof -t "/home/${user}" | xargs -I % kill -9 %
+    deluser --force --remove-home "${user}" >> "$log" 2>&1
+    groupdel "${user}" >> "$log" 2>&1
+    rm -f "/etc/htpasswd.d/htpasswd.${user}"
+    htpasswd -D /etc/htpasswd "${user}" >> "$log" 2>&1
+    rm -f "/etc/tmpfiles.d/${user}.conf"
+    rm -f /etc/nginx/conf.d/"${user}"*
+    rm -f "/etc/sudoers.d/${user}"
+    rm -rf "/run/screen/S-${user}"
+    rm -rf "/var/run/${user}"
     rm -rf /home/"${user:?}"
-    rm /root/${user}.info
+    rm "/root/${user}.info"
     systemctl reload nginx
     echo_success "User $user removed"
 }
@@ -451,11 +453,11 @@ function _chpasswd() {
     if [[ $user = "$master" ]]; then
         echo "$user:$pass" > /root/.master.info
     fi
-    echo "$user:$pass" > /root/${user}.info
+    echo "$user:$pass" > "/root/${user}.info"
     chpasswd <<< "${user}:${pass}" >> "$log" 2>&1
-    htpasswd -b /etc/htpasswd $user "$pass" >> "$log" 2>&1
+    htpasswd -b /etc/htpasswd "$user" "$pass" >> "$log" 2>&1
     mkdir -p /etc/htpasswd.d/
-    htpasswd -b -c /etc/htpasswd.d/htpasswd.${user} $user "$pass" >> "$log" 2>&1
+    htpasswd -b -c "/etc/htpasswd.d/htpasswd.${user}" "$user" "$pass" >> "$log" 2>&1
     for app in autobrr deluge lounge netronome organizr qbittorrent qui transmission; do
         if [[ -f /install/.${app}.lock ]]; then
             case $app in
@@ -463,8 +465,8 @@ function _chpasswd() {
                     echo -n "$pass" | /usr/bin/autobrrctl --config "/home/$user/.config/autobrr" change-password "$user"
                     ;;
                 deluge)
-                    systemctl stop deluged@${user} >> "$log" 2>&1
-                    systemctl stop deluge-web@${user} >> "$log" 2>&1
+                    systemctl stop "deluged@${user}" >> "$log" 2>&1
+                    systemctl stop "deluge-web@${user}" >> "$log" 2>&1
                     DWSALT=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 32 | head -n 1)
                     # FIX: removed the incorrect $() around command -v
                     if command -v python2.7 > /dev/null 2>&1; then
@@ -472,13 +474,13 @@ function _chpasswd() {
                     elif command -v python3 > /dev/null 2>&1; then
                         pythonversion=python3
                     fi
-                    DWP=$(${pythonversion} /usr/local/bin/swizzin/deluge.Userpass.py ${pass} ${DWSALT})
-                    sed -i "s/.*${user}.*/${user}:${pass}:10/" /home/$user/.config/deluge/auth
-                    sed -i "s/.*pwd_salt.*/  \"pwd_salt\": \"${DWSALT}\",/" /home/$user/.config/deluge/web.conf
-                    sed -i "s/.*pwd_sha1.*/  \"pwd_sha1\": \"${DWP}\",/" /home/$user/.config/deluge/web.conf
-                    sed -i "/$user/{n;s/.*/      \"${pass}\"/}" /home/${user}/.config/deluge/hostlist.conf.1.2
-                    systemctl start deluged@${user} >> "$log" 2>&1
-                    systemctl start deluge-web@${user} >> "$log" 2>&1
+                    DWP=$(${pythonversion} /usr/local/bin/swizzin/deluge.Userpass.py "${pass}" "${DWSALT}")
+                    sed -i "s/.*${user}.*/${user}:${pass}:10/" "/home/$user/.config/deluge/auth"
+                    sed -i "s/.*pwd_salt.*/  \"pwd_salt\": \"${DWSALT}\",/" "/home/$user/.config/deluge/web.conf"
+                    sed -i "s/.*pwd_sha1.*/  \"pwd_sha1\": \"${DWP}\",/" "/home/$user/.config/deluge/web.conf"
+                    sed -i "/$user/{n;s/.*/      \"${pass}\"/}" "/home/${user}/.config/deluge/hostlist.conf.1.2"
+                    systemctl start "deluged@${user}" >> "$log" 2>&1
+                    systemctl start "deluge-web@${user}" >> "$log" 2>&1
                     ;;
                 lounge)
                     su -s /bin/sh lounge -c "thelounge reset $user " <<< "${pass}" >> "$log" 2>&1
@@ -498,9 +500,9 @@ function _chpasswd() {
                     qbittorrent_chpasswd "${user}" "${pass}"
                     ;;
                 transmission)
-                    systemctl stop transmission@${user} >> "$log" 2>&1
-                    sed -i "s/.*rpc-password.*/  \"rpc-password\": \"${pass}\",/" /home/$user/.config/transmission-daemon/settings.json
-                    systemctl start transmission@${user} >> "$log" 2>&1
+                    systemctl stop "transmission@${user}" >> "$log" 2>&1
+                    sed -i "s/.*rpc-password.*/  \"rpc-password\": \"${pass}\",/" "/home/$user/.config/transmission-daemon/settings.json"
+                    systemctl start "transmission@${user}" >> "$log" 2>&1
                     ;;
                 *) ;;
             esac
@@ -656,10 +658,11 @@ case "$1" in
             dev="--dev"
             shift
         fi
-        if [[ ! $2 ]]; then
+        if [[ -z $2 ]]; then
             echo_error "You must choose at least one package to update."
             exit 1
         fi
+        # shellcheck disable=SC2086 # when $dev is unset it must expand to no argument at all
         _update $dev
         _upgrade "$@"
         ;;

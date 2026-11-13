@@ -30,10 +30,10 @@ touch "$log"
 # Setting up /etc/swizzin
 #shellcheck disable=SC2120
 function _source_setup() {
-    echo -e "...\tInstalling git"             # The one true dependency
-    apt-get update -q >> "$log" 2>&1          # Force update just in case sources were never pulled
-    apt-get install git -y -qq >> "$log"      # DO NOT PUT MORE DEPENDENCIES HERE
-    echo -e "\tGit Installed"                 # All dependencies go to scripts/update/10-dependencies.sh
+    echo -e "...\tInstalling git"        # The one true dependency
+    apt-get update -q >> "$log" 2>&1     # Force update just in case sources were never pulled
+    apt-get install git -y -qq >> "$log" # DO NOT PUT MORE DEPENDENCIES HERE
+    echo -e "\tGit Installed"            # All dependencies go to scripts/update/10-dependencies.sh
 
     if [[ "$*" =~ '--local' ]]; then
         RelativeScriptPath=$(dirname "${BASH_SOURCE[0]}")
@@ -124,11 +124,13 @@ function _option_parse() {
 
                 # anything which begins with a cap is exported
                 if grep -v '^#' "$envfile" | grep '^[A-Z]' -q; then
+                    # shellcheck disable=SC2046 # intentional word splitting: one VAR=value pair per word
                     export $(grep -v '^#' "$envfile" | grep '^[A-Z]' | tr '\n' ' ')
                 fi
 
                 # anything with a lowercase will get sourced
                 if grep -v '^#' "$envfile" | grep '^[a-z]' -q; then
+                    # shellcheck disable=SC1090 # the sourced code comes from the runtime-supplied env file
                     source <(grep -v '^#' "$envfile" | grep '^[a-z]')
                 fi
 
@@ -158,7 +160,7 @@ function _option_parse() {
         shift
     done
 
-    if [[ -z $pass && "${pass+x}" ]]; then # Generate a password if it is specifically empty
+    if [[ -z $pass && -n "${pass+x}" ]]; then # Generate a password if it is specifically empty
         pass="$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c16)"
         echo_info "Generating random password"
         echo -e "\tPass = $pass"
@@ -192,8 +194,8 @@ _os() {
     if [ ! -d /install ]; then mkdir /install; fi
     if [ ! -d /root/logs ]; then mkdir /root/logs; fi
     if ! which lsb_release > /dev/null; then
-        echo -e "...\tInstalling lsb-release"             # One more dependency until we gut this app in favour of /etc/os-release
-        apt-get install lsb-release -y -qq >> "$log"      # DO NOT PUT MORE DEPENDENCIES HERE
+        echo -e "...\tInstalling lsb-release"        # One more dependency until we gut this app in favour of /etc/os-release
+        apt-get install lsb-release -y -qq >> "$log" # DO NOT PUT MORE DEPENDENCIES HERE
     fi
     distribution=$(lsb_release -is)
     codename=$(lsb_release -cs)
@@ -210,7 +212,9 @@ _os() {
 function _preparation() {
     echo_info "Preparing system"
     apt-get install uuid-runtime -yy >> "$log" 2>&1
+    # shellcheck disable=SC2119 # apt_update takes no options here; forwarding setup args would treat them as apt options
     apt_update # Do this because sometimes the system install is so fresh it's got a good stam but it is "empty"
+    # shellcheck disable=SC2119 # apt_upgrade takes no options here; forwarding setup args would treat them as apt options
     apt_upgrade
 
     if ! bash /etc/swizzin/scripts/update/10-dependencies.sh; then
@@ -219,7 +223,7 @@ function _preparation() {
     fi
 
     nofile=$(grep "DefaultLimitNOFILE=500000" /etc/systemd/system.conf)
-    if [[ ! "$nofile" ]]; then echo "DefaultLimitNOFILE=500000" >> /etc/systemd/system.conf; fi
+    if [[ -z "$nofile" ]]; then echo "DefaultLimitNOFILE=500000" >> /etc/systemd/system.conf; fi
     echo_progress_done "Setup succesful"
     echo
 }
@@ -275,10 +279,10 @@ function _choices() {
         rm -f /root/guis
     fi
     while IFS= read -r result; do
-        touch /tmp/.$result.lock
+        touch "/tmp/.$result.lock"
     done < "$results"
 
-    locksextra=($(find /usr/local/bin/swizzin/install -type f -printf "%f\n" | cut -d "." -f 1 | sort -d))
+    mapfile -t locksextra < <(find /usr/local/bin/swizzin/install -type f -printf "%f\n" | cut -d "." -f 1 | sort -d)
     for i in "${locksextra[@]}"; do
         app=${i}
         if [[ ! -f /tmp/.$app.lock ]]; then
@@ -300,14 +304,18 @@ function _check_results() {
         fi
     fi
     if grep -q rtorrent "$results"; then
+        #shellcheck source=sources/functions/rtorrent
         . /etc/swizzin/sources/functions/rtorrent
+        # shellcheck disable=SC2119 # no version argument is passed; the version comes from the environment
         whiptail_rtorrent
     fi
     if grep -q deluge "$results"; then
+        #shellcheck source=sources/functions/deluge
         . /etc/swizzin/sources/functions/deluge
         whiptail_deluge
     fi
     if grep -q qbittorrent "$results"; then
+        #shellcheck source=sources/functions/qbittorrent
         . /etc/swizzin/sources/functions/qbittorrent
         whiptail_qbittorrent
     fi
@@ -317,7 +325,7 @@ function _check_results() {
         whiptail_transmission_source
     fi
 
-    if [[ $(grep -s rutorrent "$gui") ]] && [[ ! $(grep -s nginx "$results") ]]; then # Check nginx requirement for more than rutorrent
+    if grep -q -s rutorrent "$gui" && ! grep -q -s nginx "$results"; then # Check nginx requirement for more than rutorrent
         if (whiptail --title "nginx conflict" --yesno --yes-button "Install nginx" --no-button "Remove ruTorrent" "WARNING: The installer has detected that ruTorrent is to be installed without nginx. To continue, the installer must either install nginx or remove ruTorrent from the packages to be installed." 8 78); then
             sed -i '1s/^/nginx\n/' /root/results
             touch /tmp/.nginx.lock
@@ -338,10 +346,12 @@ function _prioritize_results() {
 function _install() {
     begin=$(date +"%s")
     if [[ -s /root/results ]]; then
+        # shellcheck disable=SC2046 # intentional word splitting: box install takes one package per word
         bash /etc/swizzin/scripts/box install $(< /root/results) && rm /root/results
         showTimer=true
     fi
     if [[ -s /root/results2 ]]; then
+        # shellcheck disable=SC2046 # intentional word splitting: box install takes one package per word
         bash /etc/swizzin/scripts/box install $(< /root/results2) && rm /root/results2
         showTimer=true
     fi
@@ -357,6 +367,7 @@ function _post() {
     user=$(_get_master_username)
 
     ip=$(ip route get 1 | sed -n 's/^.*src \([0-9.]*\) .*$/\1/p')
+    # shellcheck disable=SC2016 # the pattern and replacement are literal text, not shell expansions
     if ! grep -q -ow '^export PATH=$PATH:/usr/local/bin/swizzin$' ~/.bashrc; then
         echo "export PATH=\$PATH:/usr/local/bin/swizzin" >> /root/.bashrc
     fi

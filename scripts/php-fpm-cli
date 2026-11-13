@@ -47,6 +47,7 @@ stripheaders() {
     sed -E '1,/^.$/ d'
 }
 
+#shellcheck source=sources/functions/php
 . /etc/swizzin/sources/functions/php
 phpversion=$(php_service_version)
 sock="php${phpversion}-fpm"

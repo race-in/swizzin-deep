@@ -13,18 +13,18 @@ check_permission() {
 }
 
 # Check so that all scripts has --rwxr-xr-x = 755
-for file in $(find scripts); do
+while IFS= read -r file; do
     check_permission 755 "$file" || exit_code=1
-done
+done < <(find scripts)
 
 # Check so that all sources has --rw-r--r-- = 644
-for file in $(find sources -type f); do
+while IFS= read -r file; do
     check_permission 644 "$file" || exit_code=1
-done
+done < <(find sources -type f)
 
 # Check so that all directories in sources has --rwxr-xr-x = 755
-for folder in $(find sources -type d); do
+while IFS= read -r folder; do
     check_permission 755 "$folder" || exit_code=1
-done
+done < <(find sources -type d)
 
 exit "$exit_code"

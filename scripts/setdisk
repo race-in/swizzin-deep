@@ -23,7 +23,7 @@ function _setdisk() {
         echo -n "Username: "
         read -r username
     else
-        if [[ ! $(id -u "$username") ]]; then
+        if [[ -z "$(id -u "$username")" ]]; then
             echo "User does not exist. Exiting"
             return 1
         fi

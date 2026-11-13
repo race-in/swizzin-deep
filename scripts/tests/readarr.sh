@@ -7,4 +7,4 @@ check_service "readarr" || BAD=true
 check_port_curl "8787" || BAD=true
 check_nginx "readarr" || BAD=true
 
-evaluate_bad
+evaluate_bad "readarr"
