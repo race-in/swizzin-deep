@@ -1,6 +1,18 @@
+# Shell scripts and their sourced libraries must always be LF in the repository
+# and in the working tree, regardless of the platform/core.autocrlf setting.
 *.bash text eol=lf
 *.fish text eol=lf
 *.sh text eol=lf
+*.py text eol=lf
+*.patch text eol=lf
+*.guess text eol=lf
+*.sub text eol=lf
+
+# Extensionless scripts and helpers (scripts/box, sources/functions/*, ...)
+# would otherwise be checked out with CRLF on Windows, which shellcheck and
+# bash reject.
+scripts/** text eol=lf
+sources/** text eol=lf
 
 sources/functions/* diff=bash
 
