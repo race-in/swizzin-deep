@@ -13,6 +13,51 @@ function _check_rutorrent_safe_dir() {
         git config --global --add safe.directory /srv/rutorrent
     fi
 }
+
+# GitHub discontinued Subversion support in January 2024, so the historical
+# `svn co https://github.com/...` calls for ruTorrent plugins and themes no
+# longer work. Download the repository archive and copy the wanted path out.
+# Usage: _github_export <owner/repo> <HEAD|refs/tags/x> <path in repo> <destination>
+function _github_export() {
+    local repo="$1" ref="$2" subpath="$3" dest="$4"
+    local archive workdir url src top
+
+    if [[ $ref == "HEAD" ]]; then
+        url="https://github.com/${repo}/archive/HEAD.tar.gz"
+    else
+        url="https://github.com/${repo}/archive/${ref}.tar.gz"
+    fi
+
+    archive=$(mktemp) || return 1
+    if ! curl -fsSL "$url" -o "$archive" >> "${log}" 2>&1; then
+        echo_error "Could not download the ${repo} archive"
+        rm -f "$archive"
+        return 1
+    fi
+
+    workdir=$(mktemp -d) || {
+        rm -f "$archive"
+        return 1
+    }
+    if ! tar -xzf "$archive" -C "$workdir" >> "${log}" 2>&1; then
+        echo_error "Could not extract the ${repo} archive"
+        rm -rf "$workdir" "$archive"
+        return 1
+    fi
+    rm -f "$archive"
+
+    top=$(find "$workdir" -mindepth 1 -maxdepth 1 -type d -print -quit 2> /dev/null)
+    src="${top}/${subpath}"
+    if [[ -z $top || ! -e $src ]]; then
+        echo_error "${subpath} was not found in the ${repo} archive"
+        rm -rf "$workdir"
+        return 1
+    fi
+
+    rm -rf "$dest"
+    cp -a "$src" "$dest"
+    rm -rf "$workdir"
+}
 #shellcheck source=sources/globals.sh
 . /etc/swizzin/sources/globals.sh
 #shellcheck source=sources/functions/rutorrent
@@ -130,7 +175,7 @@ function _itplugs() {
         }
         case "$result" in
             _getdir | _noty | _noty2 | _task | autotools | check_port | chunks | cookies | cpuload | create | data | datadir | diskspace | edit | erasedata | extratio | extsearch | feeds | filedrop | geoip | history | httprpc | ipad | loginmgr | lookat | mediainfo | ratio | retrackers | rpc | rss | rssurlrewrite | rutracker_check | scheduler | screenshots | seedingtime | show_peers_like_wtorrent | source | spectrogram | theme | throttle | tracklabels | trafic | unpack | uploadeta | xmpp)
-                svn co "https://github.com/Novik/ruTorrent.git/tags/${tag}/plugins/${result}" "${result}"
+                _github_export Novik/ruTorrent "refs/tags/${tag}" "plugins/${result}" "${result}"
                 case $result in
                     create)
                         sed -i 's/useExternal = false;/useExternal = "mktorrent";/' /srv/rutorrent/plugins/create/conf.php
@@ -159,7 +204,7 @@ function _itplugs() {
             filemanager)
                 case $tag in
                     3.*)
-                        svn co https://github.com/nelu/rutorrent-thirdparty-plugins/trunk/filemanager > /dev/null 2>&1
+                        _github_export nelu/rutorrent-thirdparty-plugins HEAD filemanager filemanager > /dev/null 2>&1
                         chmod -R +x /srv/rutorrent/plugins/filemanager/scripts
                         cat > /srv/rutorrent/plugins/filemanager/conf.php << FMCONF
 <?php
@@ -187,7 +232,7 @@ FMCONF
             filemanager-share)
                 case $tag in
                     3.*)
-                        svn co https://github.com/nelu/rutorrent-thirdparty-plugins/trunk/fileshare > /dev/null 2>&1
+                        _github_export nelu/rutorrent-thirdparty-plugins HEAD fileshare fileshare > /dev/null 2>&1
                         ln -s /srv/rutorrent/plugins/fileshare/share.php /srv/fancyindex/share.php > /dev/null 2>&1
                         # shellcheck disable=SC2016 # $downloadpath/$_SERVER are literal PHP, expanded by PHP not this shell
                         sed -i 's/$downloadpath .*/$downloadpath = '"'https:\/\/'"'.$_SERVER['"'HTTP_HOST'"'] . '"'\/fancyindex\/share.php'"';/g' /srv/rutorrent/plugins/fileshare/conf.php
@@ -229,11 +274,11 @@ FMCONF
                 git clone https://github.com/Gyran/rutorrent-pausewebui.git pausewebui > /dev/null 2>&1
                 ;;
             ratiocolor)
-                svn co https://github.com/Gyran/rutorrent-ratiocolor.git/trunk ratiocolor > /dev/null 2>&1
+                git clone --depth 1 https://github.com/Gyran/rutorrent-ratiocolor.git ratiocolor > /dev/null 2>&1
                 sed -i "s/changeWhat = \"cell-background\";/changeWhat = \"font\";/g" /srv/rutorrent/plugins/ratiocolor/init.js
                 ;;
             *)
-                echo_error "$ is invalid"
+                echo_error "$result is invalid"
                 ;;
         esac
     done
@@ -293,7 +338,7 @@ function _itthemes() {
     arg=("$@")
     result=("${arg[@]:1}")
     installa=()
-    themes=(Acid Agent34 Agent46 Blue club-QuickBox Dark DarkBetter Excel FlatUI_Dark FlatUI_Light FlatUI_Material MaterialDesign Oblivion OblivionBlue)
+    themes=(Acid Agent34 Agent46 Blue club-QuickBox Dark DarkBetter Excel MaterialDesign Oblivion OblivionBlue)
 
     # Dynamically create whiptail options:
     # Don't offer to install themes which are installed
@@ -321,16 +366,13 @@ function _itthemes() {
         }
         case "$result" in
             Acid | Blue | Dark | DarkBetter | Excel | MaterialDesign | Oblivion)
-                svn co "https://github.com/Novik/ruTorrent.git/trunk/plugins/theme/themes/${result}" "${result}" > /dev/null 2>&1
+                _github_export Novik/ruTorrent HEAD "plugins/theme/themes/${result}" "${result}" > /dev/null 2>&1
                 ;;
             Agent* | OblivionBlue)
-                svn co "https://github.com/ArtyumX/ruTorrent-Themes/trunk/${result}" "${result}" > /dev/null 2>&1
+                _github_export ArtyumX/ruTorrent-Themes HEAD "${result}" "${result}" > /dev/null 2>&1
                 ;;
             club-QuickBox)
                 git clone https://github.com/QuickBox/club-QuickBox.git "${result}" > /dev/null 2>&1
-                ;;
-            FlatUI*)
-                svn co "https://github.com/exetico/FlatUI.git/trunk/${result}" "${result}" > /dev/null 2>&1
                 ;;
             *)
                 echo_error "$result is invalid"
@@ -349,7 +391,7 @@ function _rmthemes() {
     arg=("$@")
     result=("${arg[@]:1}")
     removea=()
-    themes=(Acid Agent34 Agent46 Blue club-QuickBox Dark DarkBetter Excel FlatUI_Dark FlatUI_Light FlatUI_Material MaterialDesign Oblivion OblivionBlue)
+    themes=(Acid Agent34 Agent46 Blue club-QuickBox Dark DarkBetter Excel MaterialDesign Oblivion OblivionBlue)
     for i in "${themes[@]}"; do
         if [[ -d /srv/rutorrent/plugins/theme/themes/$i ]]; then
             removea+=("$i" '""')
