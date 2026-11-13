@@ -24,7 +24,7 @@
 
 usage() {
     cat << USAGE
-Usage: $(basename $0) [-connect CONN] -r <code>
+Usage: $(basename "$0") [-connect CONN] -r <code>
 
 Options:
      -connect CONN    Passed to cgi-fcgi, default: /var/run/php5-fpm.sock
@@ -36,11 +36,11 @@ USAGE
 }
 
 main() {
-    echo "<?php $PHPCODE" > $PHPFPMCLI_FILE
-    SCRIPT_FILENAME=$PHPFPMCLI_FILE \
+    echo "<?php $PHPCODE" > "$PHPFPMCLI_FILE"
+    SCRIPT_FILENAME="$PHPFPMCLI_FILE" \
         REQUEST_METHOD=GET \
         cgi-fcgi -bind -connect "$CONN" | stripheaders
-    rm $PHPFPMCLI_FILE
+    rm -f "$PHPFPMCLI_FILE"
 }
 
 stripheaders() {
@@ -51,7 +51,13 @@ stripheaders() {
 phpversion=$(php_service_version)
 sock="php${phpversion}-fpm"
 
-PHPFPMCLI_FILE="/tmp/php-fpm-cli.$$.php"
+# FIX: was /tmp/php-fpm-cli.$$.php — predictable name, root-writable /tmp => symlink attack.
+# Use mktemp with 0700 perms to prevent local users from hijacking the temp file.
+PHPFPMCLI_FILE="$(mktemp /tmp/php-fpm-cli.XXXXXXXXXX.php)" || {
+    echo_error "Cannot create temp file in /tmp"
+    exit 1
+}
+trap 'rm -f "$PHPFPMCLI_FILE"' EXIT
 CONN="/run/php/${sock}.sock"
 PHPCODE=""
 init() {
@@ -89,6 +95,6 @@ init() {
 }
 
 if [[ -z $(which cgi-fcgi) ]]; then
-    apt_install --recommends libfcgi-bin libfcgi0ldbl
+    apt_install --recommends libfcgi-bin libfcgi0ld0l
 fi
 init "$@" && main
