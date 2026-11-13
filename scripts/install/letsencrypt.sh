@@ -88,7 +88,7 @@ if [[ ${cf} == yes ]]; then
         echo_query "CF Email"
         read -er email
     else
-        api=$LE_CF_EMAIL
+        email=$LE_CF_EMAIL
     fi
 
     export CF_Key="${api}"
@@ -101,8 +101,8 @@ if [[ ${cf} == yes ]]; then
         exit 1
     fi
 
-    # shellcheck disable=SC2154 # record is never assigned here; block is intentionally inert
-    if [[ ${record} == no ]]; then
+    # When no record exists yet, create the A record through the Cloudflare API
+    if [[ ${main} == no ]]; then
 
         if [[ -z $LE_CF_ZONE ]]; then
             echo_query "Zone Name (example.com)"
