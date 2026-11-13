@@ -3,11 +3,12 @@ repos:
     rev: v3.12.0.1
     hooks:
       - id: shfmt
+        # Vendored autoconf helpers are generated upstream, do not reformat them.
+        exclude: ^sources/patches/rtorrent/xmlrpc-config\.(guess|sub)$
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.11.0.1
     hooks:
       - id: shellcheck
-        args: ["--severity=error"]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0 # Use the ref you want to point at
     hooks:

@@ -1,4 +1,6 @@
 #! /bin/sh
+# Vendored autoconf helper (generated file, not maintained by swizzin).
+# shellcheck disable=SC2006,SC2086,SC2249,SC2268,SC3028,SC2320
 # Attempt to guess a canonical system name.
 #   Copyright 1992-2019 Free Software Foundation, Inc.
 
