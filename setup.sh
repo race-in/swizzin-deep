@@ -17,21 +17,23 @@
 echo "Starting Swizzin installation"
 
 if [[ $EUID -ne 0 ]]; then
-    echo "Swizzin setup requires user to be root. su or sudo -s and run again ..."
+    # FIX: 'su -s' puts you in a broken root shell (missing env vars).
+    # README correctly says use 'su -' or 'sudo -i'. Align the message.
+    echo "Swizzin setup requires user to be root. Use 'su -' or 'sudo -i' and run again ..."
     exit 1
 fi
 
 export log=/root/logs/swizzin.log
 mkdir -p /root/logs
-touch $log
+touch "$log"
 
 # Setting up /etc/swizzin
 #shellcheck disable=SC2120
 function _source_setup() {
-    echo -e "...\tInstalling git"      # The one true dependency
-    apt-get update -q >> $log 2>&1     # Force update just in case sources were never pulled
-    apt-get install git -y -qq >> $log # DO NOT PUT MORE DEPENDENCIES HERE
-    echo -e "\tGit Installed"          # All dependencies go to scripts/update/10-dependencies.sh
+    echo -e "...\tInstalling git"             # The one true dependency
+    apt-get update -q >> "$log" 2>&1          # Force update just in case sources were never pulled
+    apt-get install git -y -qq >> "$log"      # DO NOT PUT MORE DEPENDENCIES HERE
+    echo -e "\tGit Installed"                 # All dependencies go to scripts/update/10-dependencies.sh
 
     if [[ "$*" =~ '--local' ]]; then
         RelativeScriptPath=$(dirname "${BASH_SOURCE[0]}")
@@ -45,7 +47,7 @@ function _source_setup() {
         echo "Best of luck and please follow the contribution guidelines cheerio"
     else
         echo -e "...\tCloning swizzin repo to localhost"
-        git clone https://github.com/swizzin/swizzin.git /etc/swizzin >> ${log} 2>&1
+        git clone https://github.com/swizzin/swizzin.git /etc/swizzin >> "${log}" 2>&1
         echo -e "\tSwizzin cloned!"
     fi
 
@@ -70,6 +72,7 @@ function _arch_check() {
     fi
 }
 _arch_check
+
 function _option_parse() {
     while test $# -gt 0; do
         case "$1" in
@@ -81,7 +84,7 @@ function _option_parse() {
             --pass | --password)
                 shift
                 pass="$1"
-                echo -e "\tPass = $pass" #Not an echo_info as we don't want this to hit the logs
+                echo -e "\tPass = $pass" # Not an echo_info as we don't want this to hit the logs
                 ;;
             --skip-cracklib)
                 if check_installed libpam-cracklib; then
@@ -126,7 +129,7 @@ function _option_parse() {
 
                 # anything with a lowercase will get sourced
                 if grep -v '^#' "$envfile" | grep '^[a-z]' -q; then
-                    source <(grep -v '^#' "$envfile" | grep '^[a-z]') # | read -d $'\x04' name -
+                    source <(grep -v '^#' "$envfile" | grep '^[a-z]')
                 fi
 
                 # If packages were in env, make the installArray
@@ -189,8 +192,8 @@ _os() {
     if [ ! -d /install ]; then mkdir /install; fi
     if [ ! -d /root/logs ]; then mkdir /root/logs; fi
     if ! which lsb_release > /dev/null; then
-        echo -e "...\tInstalling lsb-release"      # Okay MAYBE there's one more depend until we gut this app in favour of /etc/os-release
-        apt-get install lsb-release -y -qq >> $log # DO NOT PUT MORE DEPENDENCIES HERE
+        echo -e "...\tInstalling lsb-release"             # One more dependency until we gut this app in favour of /etc/os-release
+        apt-get install lsb-release -y -qq >> "$log"      # DO NOT PUT MORE DEPENDENCIES HERE
     fi
     distribution=$(lsb_release -is)
     codename=$(lsb_release -cs)
@@ -206,7 +209,7 @@ _os() {
 
 function _preparation() {
     echo_info "Preparing system"
-    apt-get install uuid-runtime -yy >> $log 2>&1
+    apt-get install uuid-runtime -yy >> "$log" 2>&1
     apt_update # Do this because sometimes the system install is so fresh it's got a good stam but it is "empty"
     apt_upgrade
 
@@ -357,8 +360,6 @@ function _post() {
     if ! grep -q -ow '^export PATH=$PATH:/usr/local/bin/swizzin$' ~/.bashrc; then
         echo "export PATH=\$PATH:/usr/local/bin/swizzin" >> /root/.bashrc
     fi
-    #echo "export PATH=\$PATH:/usr/local/bin/swizzin" >> /home/$user/.bashrc
-    #chown ${user}: /home/$user/.profile
     echo "Defaults    secure_path = /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/bin/swizzin" > /etc/sudoers.d/secure_path
     if [[ $distribution = "Ubuntu" ]]; then
         echo 'Defaults  env_keep -="HOME"' > /etc/sudoers.d/env_keep
@@ -394,11 +395,12 @@ _run_tests() {
     if [[ $test = "true" ]] || [ -f /etc/swizzin/.test.lock ]; then
         bash /etc/swizzin/scripts/box test || return 1
     fi
-
 }
 
+# FIX: the original condition was inverted (-z / -n swapped).
+# With -z the post-command was executed ONLY when empty. Now correct.
 _run_post() {
-    if [[ -z $postcommand ]]; then
+    if [[ -n $postcommand ]]; then
         echo_progress_start "Executing post-install commands"
         $postcommand
         echo_progress_done "Post-install commands finished"
