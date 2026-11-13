@@ -17,7 +17,7 @@
 #shellcheck source=sources/globals.sh
 . /etc/swizzin/sources/globals.sh
 echo_log_only ">>>> \`box $*\`"
-echo_log_only "git @ $(git --git-dir=/etc/swizzin/.git rev-parse --short HEAD) 2>&1"
+echo_log_only "git @ $(git --git-dir=/etc/swizzin/.git rev-parse --short HEAD 2>&1)"
 normal=$(tput sgr0)
 
 function _intro() {
@@ -127,6 +127,10 @@ function _update() {
         export SWIZ_GIT_REF
     fi
 
+    # FORK: follow the branch /etc/swizzin was cloned on instead of assuming the
+    # upstream master/develop layout, so forks update from their own branch.
+    current_branch=$(git -C /etc/swizzin rev-parse --abbrev-ref HEAD 2> /dev/null)
+
     if [[ -L /etc/swizzin ]]; then
         noupdate_message="Not updating /etc/swizzin as it is a symlink. Please consult your provider/maintainers in case you believe this is an error."
         noupdate="true"
@@ -162,14 +166,21 @@ We URGE you to migrate to a supported release if/while you still have the chance
         case "$SWIZ_GIT_REF" in
             develop) reset_target="origin/develop" ;;
             tags/*) reset_target="$SWIZ_GIT_REF" ;;
-            *) reset_target="origin/master" ;;
+            *)
+                if [[ -n $current_branch && $current_branch != "HEAD" ]] &&
+                    git -C /etc/swizzin rev-parse --verify --quiet "origin/${current_branch}" > /dev/null; then
+                    reset_target="origin/${current_branch}"
+                else
+                    reset_target="origin/master"
+                fi
+                ;;
         esac
 
-        git -C /etc/swizzin checkout "${SWIZ_GIT_REF:-master}" >> "$log" 2>&1 ||
+        git -C /etc/swizzin checkout "${SWIZ_GIT_REF:-${current_branch:-master}}" >> "$log" 2>&1 ||
             {
                 echo_warn "Unclean repo detected, resetting current branch."
                 git -C /etc/swizzin reset --hard >> "$log" 2>&1
-                git -C /etc/swizzin checkout "${SWIZ_GIT_REF:-master}" >> "$log" 2>&1
+                git -C /etc/swizzin checkout "${SWIZ_GIT_REF:-${current_branch:-master}}" >> "$log" 2>&1
             }
         {
             #shellcheck disable=SC2129
