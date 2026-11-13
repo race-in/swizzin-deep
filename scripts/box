@@ -74,7 +74,8 @@ function _remove() {
     whiptail --title "Remove Software" --noitem --checklist --separate-output "Make some choices:" 15 26 7 "${removea[@]}" 2> results
     readarray -t result < results
     for result in "${result[@]}"; do
-        echo_info -e "Removing ${result}"
+        # FIX: echo_info does not support -e; the original was printing "-e Removing ..." literally
+        echo_info "Removing ${result}"
         bash /usr/local/bin/swizzin/remove/${result}.sh
     done
     rm results
@@ -153,23 +154,31 @@ We URGE you to migrate to a supported release if/while you still have the chance
     echo_log_only "noupdate = $noupdate"
     # If there is nothing blocking the update...
     if [[ -z $noupdate ]]; then
-        # Run the git update procedure
         echo_progress_start "Updating swizzin local repository"
-        git -C /etc/swizzin checkout "${SWIZ_GIT_REF:-master}" >> $log 2>&1 ||
+
+        # FIX: compute the correct reset target so that develop branch tracks origin/develop
+        # (the original code hardcoded origin/master and silently left develop stale).
+        case "$SWIZ_GIT_REF" in
+            develop)  reset_target="origin/develop" ;;
+            tags/*)   reset_target="$SWIZ_GIT_REF" ;;
+            *)        reset_target="origin/master" ;;
+        esac
+
+        git -C /etc/swizzin checkout "${SWIZ_GIT_REF:-master}" >> "$log" 2>&1 ||
             {
                 echo_warn "Unclean repo detected, resetting current branch."
-                git -C /etc/swizzin reset --hard >> $log 2>&1
-                git -C /etc/swizzin checkout "${SWIZ_GIT_REF:-master}" >> $log 2>&1
+                git -C /etc/swizzin reset --hard >> "$log" 2>&1
+                git -C /etc/swizzin checkout "${SWIZ_GIT_REF:-master}" >> "$log" 2>&1
             }
         {
             #shellcheck disable=SC2129
-            git -C /etc/swizzin fetch --all --tags --prune >> $log 2>&1
-            git -C /etc/swizzin reset --hard "${SWIZ_GIT_REF:-origin/master}" >> $log 2>&1
+            git -C /etc/swizzin fetch --all --tags --prune >> "$log" 2>&1
+            git -C /etc/swizzin reset --hard "$reset_target" >> "$log" 2>&1
         } || {
             echo_error "Failed to update from git"
             exit 1
         }
-        echo_progress_done "Local repository updated using: ${SWIZ_GIT_REF:-master}"
+        echo_progress_done "Local repository updated using: $reset_target"
         echo_info "HEAD is now set to $(git -C /etc/swizzin log --pretty=format:'%h' -n1)"
     else
         echo_warn "$noupdate_message"
@@ -252,7 +261,6 @@ function _list() {
         if [[ -z $description ]]; then description="Description missing"; fi
         printf "${sgformat}" "$app"
         echo -e "${description}\n" | fmt --goal=50 | sed -e "2,\$s/^/$spacing/"
-
     done
 }
 
@@ -284,18 +292,18 @@ function _adduser() {
 
     echo "$user:$pass" > /root/"${user}".info
     if [[ $existing != "true" ]]; then
-        useradd "${user}" -m -G www-data -s /bin/bash >> $log 2>&1
+        useradd "${user}" -m -G www-data -s /bin/bash >> "$log" 2>&1
     fi
-    chpasswd <<< "${user}:${pass}" >> $log 2>&1
+    chpasswd <<< "${user}:${pass}" >> "$log" 2>&1
     if [[ -f /etc/htpasswd ]]; then
         echo_log_only "htpasswd file exists"
-        htpasswd -b /etc/htpasswd "$user" "$pass" >> $log 2>&1
+        htpasswd -b /etc/htpasswd "$user" "$pass" >> "$log" 2>&1
     else
         echo_log_only "creating htpasswd file"
-        htpasswd -b -c /etc/htpasswd "$user" "$pass" >> $log 2>&1
+        htpasswd -b -c /etc/htpasswd "$user" "$pass" >> "$log" 2>&1
     fi
     mkdir -p /etc/htpasswd.d/
-    htpasswd -b -c /etc/htpasswd.d/htpasswd."${user}" "$user" "$pass" >> $log 2>&1
+    htpasswd -b -c /etc/htpasswd.d/htpasswd."${user}" "$user" "$pass" >> "$log" 2>&1
 
     if [[ -f /install/.quota.lock ]]; then
         bash /etc/swizzin/scripts/setdisk "$user"
@@ -307,7 +315,7 @@ function _adduser() {
 
     if [[ -f /install/.panel.lock ]]; then setfacl -m g:swizzin:rx /home/"${user}"; fi
     echo "D /var/run/${user} 0750 ${user} ${user} -" >> /etc/tmpfiles.d/"${user}".conf
-    systemd-tmpfiles /etc/tmpfiles.d/"${user}".conf --create >> $log 2>&1
+    systemd-tmpfiles /etc/tmpfiles.d/"${user}".conf --create >> "$log" 2>&1
 
     for app in rtorrent rutorrent deluge autobrr flood netronome nzbget lounge transmission wireguard organizr qbittorrent qui; do
         if [[ -f /install/.${app}.lock ]]; then
@@ -413,10 +421,10 @@ function _deluser() {
     fi
 
     lsof -t /home/${user} | xargs -I % kill -9 %
-    deluser --force --remove-home ${user} >> $log 2>&1
-    groupdel ${user} >> $log 2>&1
+    deluser --force --remove-home ${user} >> "$log" 2>&1
+    groupdel ${user} >> "$log" 2>&1
     rm -f /etc/htpasswd.d/htpasswd.${user}
-    htpasswd -D /etc/htpasswd ${user} >> $log 2>&1
+    htpasswd -D /etc/htpasswd ${user} >> "$log" 2>&1
     rm -f /etc/tmpfiles.d/${user}.conf
     rm -f /etc/nginx/conf.d/${user}*
     rm -f /etc/sudoers.d/${user}
@@ -444,10 +452,10 @@ function _chpasswd() {
         echo "$user:$pass" > /root/.master.info
     fi
     echo "$user:$pass" > /root/${user}.info
-    chpasswd <<< "${user}:${pass}" >> $log 2>&1
-    htpasswd -b /etc/htpasswd $user "$pass" >> $log 2>&1
+    chpasswd <<< "${user}:${pass}" >> "$log" 2>&1
+    htpasswd -b /etc/htpasswd $user "$pass" >> "$log" 2>&1
     mkdir -p /etc/htpasswd.d/
-    htpasswd -b -c /etc/htpasswd.d/htpasswd.${user} $user "$pass" >> $log 2>&1
+    htpasswd -b -c /etc/htpasswd.d/htpasswd.${user} $user "$pass" >> "$log" 2>&1
     for app in autobrr deluge lounge netronome organizr qbittorrent qui transmission; do
         if [[ -f /install/.${app}.lock ]]; then
             case $app in
@@ -455,13 +463,13 @@ function _chpasswd() {
                     echo -n "$pass" | /usr/bin/autobrrctl --config "/home/$user/.config/autobrr" change-password "$user"
                     ;;
                 deluge)
-                    systemctl stop deluged@${user} >> $log 2>&1
-                    systemctl stop deluge-web@${user} >> $log 2>&1
+                    systemctl stop deluged@${user} >> "$log" 2>&1
+                    systemctl stop deluge-web@${user} >> "$log" 2>&1
                     DWSALT=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 32 | head -n 1)
-                    # shellcheck disable=SC2328
-                    if $(command -v python2.7 > /dev/null 2>&1); then
+                    # FIX: removed the incorrect $() around command -v
+                    if command -v python2.7 > /dev/null 2>&1; then
                         pythonversion=python2.7
-                    elif $(command -v python3 > /dev/null 2>&1); then
+                    elif command -v python3 > /dev/null 2>&1; then
                         pythonversion=python3
                     fi
                     DWP=$(${pythonversion} /usr/local/bin/swizzin/deluge.Userpass.py ${pass} ${DWSALT})
@@ -469,11 +477,11 @@ function _chpasswd() {
                     sed -i "s/.*pwd_salt.*/  \"pwd_salt\": \"${DWSALT}\",/" /home/$user/.config/deluge/web.conf
                     sed -i "s/.*pwd_sha1.*/  \"pwd_sha1\": \"${DWP}\",/" /home/$user/.config/deluge/web.conf
                     sed -i "/$user/{n;s/.*/      \"${pass}\"/}" /home/${user}/.config/deluge/hostlist.conf.1.2
-                    systemctl start deluged@${user} >> $log 2>&1
-                    systemctl start deluge-web@${user} >> $log 2>&1
+                    systemctl start deluged@${user} >> "$log" 2>&1
+                    systemctl start deluge-web@${user} >> "$log" 2>&1
                     ;;
                 lounge)
-                    su -s /bin/sh lounge -c "thelounge reset $user " <<< "${pass}" >> $log 2>&1
+                    su -s /bin/sh lounge -c "thelounge reset $user " <<< "${pass}" >> "$log" 2>&1
                     ;;
                 netronome)
                     echo -n "$pass" | /usr/bin/netronome --config "/home/$user/.config/netronome/config.toml" change-password "$user"
@@ -490,9 +498,9 @@ function _chpasswd() {
                     qbittorrent_chpasswd "${user}" "${pass}"
                     ;;
                 transmission)
-                    systemctl stop transmission@${user} >> $log 2>&1
+                    systemctl stop transmission@${user} >> "$log" 2>&1
                     sed -i "s/.*rpc-password.*/  \"rpc-password\": \"${pass}\",/" /home/$user/.config/transmission-daemon/settings.json
-                    systemctl start transmission@${user} >> $log 2>&1
+                    systemctl start transmission@${user} >> "$log" 2>&1
                     ;;
                 *) ;;
             esac
@@ -517,7 +525,7 @@ function _gobrr() {
     apt_install --no-recommends mpv
     mpv --vo=tct --really-quiet https://media.tenor.co/videos/36c2c191bf4e05338e48c83a9a81ce35/mp4 --loop-file=2 &
     if [[ ! -f /install/.autobrr.lock ]]; then
-        bash /etc/swizzin/scripts/install/autobrr.sh >> ${log} 2>&1
+        bash /etc/swizzin/scripts/install/autobrr.sh >> "${log}" 2>&1
     fi
     wait
     echo_success "BOX WENT BRR"
@@ -537,7 +545,6 @@ _run_tests() {
     export bell=false
     oldlog="$log"
     log="/root/logs/tests-$(date +%Y.%m.%d-%H:%M:%S).txt"
-    # log='./test-results.txt'
     export log
     touch "$log"
     for item in "${list[@]}"; do
@@ -559,7 +566,6 @@ _run_tests() {
     fi
     log="$oldlog"
     export log
-
 }
 
 branch_name="$(git -C /etc/swizzin symbolic-ref HEAD 2> /dev/null)" || branch_name="(unnamed branch)" # detached HEAD
