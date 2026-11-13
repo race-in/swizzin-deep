@@ -11,12 +11,12 @@
 #   including (via compiler) GPL-licensed code must also be made available
 #   under the GPL along with build & install instructions.
 #
-users=($(cut -d: -f1 < /etc/htpasswd))
-for u in ${users}; do
-    systemctl disable --now -q deluged@$u
-    systemctl disable --now -q deluge-web@$u
-    rm -rf /home/${u}/.config/deluge
-    rm -rf /home/${u}/dwatch
+mapfile -t users < <(cut -d: -f1 < /etc/htpasswd)
+for u in "${users[@]}"; do
+    systemctl disable --now -q deluged@"$u"
+    systemctl disable --now -q deluge-web@"$u"
+    rm -rf "/home/${u}/.config/deluge"
+    rm -rf "/home/${u}/dwatch"
 done
 
 rm /etc/systemd/system/deluged@.service

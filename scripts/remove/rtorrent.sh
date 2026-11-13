@@ -1,15 +1,15 @@
 #!/bin/bash
-users=($(cut -d: -f1 < /etc/htpasswd))
+mapfile -t users < <(cut -d: -f1 < /etc/htpasswd)
 
 if [[ -f /install/.rutorrent.lock || -f /install/.flood.lock ]]; then
     if ! ask "This will remove ruTorrent&/Flood. Continue?" Y; then
         exit 0
     fi
 fi
-for u in ${users}; do
-    systemctl disable -q rtorrent@${u}
-    systemctl stop -q rtorrent@${u}
-    rm -f /home/${u}/.rtorrent.rc
+for u in "${users[@]}"; do
+    systemctl disable -q rtorrent@"${u}"
+    systemctl stop -q rtorrent@"${u}"
+    rm -f "/home/${u}/.rtorrent.rc"
 done
 
 #shellcheck source=sources/functions/rtorrent

@@ -4,9 +4,11 @@ systemctl stop -q nginx
 
 [[ $(_os_codename) =~ ^(focal|buster|bullseye)$ ]] && geoip="php-geoip" || geoip=""
 APT="nginx-extras nginx libnginx-mod-http-fancyindex ssl-cert php php-cli php-fpm php-dev php-xml php-curl php-xmlrpc php-json php-opcache ${geoip}"
+# shellcheck disable=SC2086 # APT is an intentional space separated package list
 apt_remove $APT
 
 LIST='nginx-* php7.0-* php-*'
+# shellcheck disable=SC2086 # LIST is an intentional space separated package list
 apt_remove --purge $LIST
 
 rm -rf /etc/nginx

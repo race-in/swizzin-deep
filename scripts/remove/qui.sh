@@ -6,10 +6,10 @@
 . /etc/swizzin/sources/functions/utils
 
 function _remove_qui() {
-    users=($(_get_user_list))
+    mapfile -t users < <(_get_user_list)
     for user in ${users[@]}; do
-        systemctl disable --now -q qui@${user}
-        rm -rf /home/${user}/.config/qui
+        systemctl disable --now -q qui@"${user}"
+        rm -rf "/home/${user}/.config/qui"
     done
 
     rm -f /etc/systemd/system/qui@.service

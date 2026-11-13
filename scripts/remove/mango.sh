@@ -11,6 +11,7 @@ if [[ -f /install/.nginx.lock ]]; then
     systemctl reload nginx
 fi
 
-userdel mango -f -r >> $log 2>&1
+# shellcheck disable=SC2154 # log is exported by box from sources/globals.sh
+userdel mango -f -r >> "$log" 2>&1
 
 rm /install/.mango.lock

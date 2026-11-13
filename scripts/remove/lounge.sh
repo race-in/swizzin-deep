@@ -4,6 +4,7 @@ systemctl disable -q lounge >> /dev/null 2>&1
 systemctl stop -q lounge
 
 # remove old npm installs
+# shellcheck disable=SC2129 # each /dev/null redirect stays attached to its own command
 npm uninstall -g thelounge --save >> /dev/null 2>&1
 
 # remove modernized yarn installs

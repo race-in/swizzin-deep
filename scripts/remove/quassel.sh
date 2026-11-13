@@ -20,7 +20,6 @@
 #################################################################################
 
 distribution=$(lsb_release -is)
-release=$(lsb_release -cs)
 
 if [[ $distribution == "Ubuntu" ]]; then
     apt_remove --purge quassel-core

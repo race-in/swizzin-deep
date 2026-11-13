@@ -4,10 +4,10 @@
 #shellcheck source=sources/functions/libtorrent
 . /etc/swizzin/sources/functions/libtorrent
 
-users=($(_get_user_list))
+mapfile -t users < <(_get_user_list)
 for user in ${users[@]}; do
-    systemctl disable --now -q qbittorrent@${user}
-    rm -rf /home/${user}/.config/qbittorrent
+    systemctl disable --now -q qbittorrent@"${user}"
+    rm -rf "/home/${user}/.config/qbittorrent"
 done
 rm -f /etc/systemd/system/qbittorrent@.service
 dpkg -r qbittorrent-nox > /dev/null 2>&1

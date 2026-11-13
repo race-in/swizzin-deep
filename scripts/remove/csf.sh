@@ -19,7 +19,11 @@
 #
 
 function _removeCSF() {
-    cd /etc/csf
+    cd /etc/csf || {
+        echo_error "Cannot cd to /etc/csf"
+        return 1
+    }
+    # shellcheck disable=SC2154 # log is exported by box from sources/globals.sh
     sh uninstall.sh >> "${log}" 2>&1
     rm /install/.csf.lock
 }

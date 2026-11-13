@@ -1,7 +1,5 @@
 #!/bin/bash
 
-user=$(cut -d: -f1 < /root/.master.info)
-
 systemctl disable --now -q headphones
 
 rm /etc/systemd/system/headphones.service

@@ -6,10 +6,10 @@
 . /etc/swizzin/sources/functions/utils
 
 function _remove_netronome() {
-    users=($(_get_user_list))
+    mapfile -t users < <(_get_user_list)
     for user in ${users[@]}; do
-        systemctl disable --now -q netronome@${user}
-        rm -rf /home/${user}/.config/netronome
+        systemctl disable --now -q netronome@"${user}"
+        rm -rf "/home/${user}/.config/netronome"
     done
 
     rm -f /etc/systemd/system/netronome@.service

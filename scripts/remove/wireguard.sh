@@ -1,13 +1,12 @@
 #!/bin/bash
 distribution=$(lsb_release -is)
-codename=$(lsb_release -cs)
 
 #shellcheck source=sources/functions/utils
 . /etc/swizzin/sources/functions/utils
-users=($(_get_user_list))
+mapfile -t users < <(_get_user_list)
 for u in ${users[@]}; do
-    systemctl disable --now -q wg-quick@wg$(id -u $u)
-    rm -rf /home/$u/.wireguard
+    systemctl disable --now -q wg-quick@wg"$(id -u "$u")"
+    rm -rf "/home/$u/.wireguard"
 done
 
 rm -rf /etc/wireguard/

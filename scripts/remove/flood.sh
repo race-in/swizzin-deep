@@ -5,10 +5,10 @@
 readarray -t users < <(_get_user_list)
 
 for user in ${users[@]}; do
-    systemctl disable flood@${user} --now -q
-    rm -rf /home/${user}/.config/flood
+    systemctl disable flood@"${user}" --now -q
+    rm -rf "/home/${user}/.config/flood"
     # Remove deprecated install method, incase the current install is outdated
-    rm -rf /home/${user}/.flood
+    rm -rf "/home/${user}/.flood"
 done
 
 if [[ -f /install/.flood.lock ]]; then
@@ -17,6 +17,7 @@ if [[ -f /install/.flood.lock ]]; then
     systemctl reload nginx
 fi
 
+# shellcheck disable=SC2154 # log is exported by box from sources/globals.sh
 npm -g remove flood >> "$log" 2>&1
 
 rm -f /etc/systemd/system/flood@.service

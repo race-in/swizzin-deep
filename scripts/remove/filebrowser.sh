@@ -9,7 +9,8 @@ function remove_filebrowser() {
     #
     rm -f "/etc/systemd/system/filebrowser.service"
     #
-    kill -9 $(ps xU ${username} | grep "/home/${username}/bin/filebrowser -d /home/${username}/.config/Filebrowser/filebrowser.db$" | awk '{print $1}') > /dev/null 2>&1
+    # shellcheck disable=SC2009,SC2046 # ps|grep matches the anchored command line; unquoted PIDs are split intentionally
+    kill -9 $(ps xU "${username}" | grep "/home/${username}/bin/filebrowser -d /home/${username}/.config/Filebrowser/filebrowser.db$" | awk '{print $1}') > /dev/null 2>&1
     #
     rm -f "/home/${username}/bin/filebrowser"
     rm -rf "/home/${username}/.config/Filebrowser"

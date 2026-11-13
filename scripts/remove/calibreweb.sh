@@ -12,6 +12,7 @@ if [[ -f /install/.nginx.lock ]]; then
     systemctl reload nginx
 fi
 
+# shellcheck disable=SC2154 # log is exported by box from sources/globals.sh
 userdel calibreweb -f -r >> "$log" 2>&1
 
 if [ ! -f /install/.calibrecs.lock ] && [ ! -f /install/.calibre.lock ]; then

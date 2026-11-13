@@ -6,10 +6,10 @@
 . /etc/swizzin/sources/functions/utils
 
 function _remove_autobrr() {
-    users=($(_get_user_list))
+    mapfile -t users < <(_get_user_list)
     for user in ${users[@]}; do
-        systemctl disable --now -q autobrr@${user}
-        rm -rf /home/${user}/.config/autobrr
+        systemctl disable --now -q autobrr@"${user}"
+        rm -rf "/home/${user}/.config/autobrr"
     done
 
     rm -f /etc/systemd/system/autobrr@.service

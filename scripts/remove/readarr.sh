@@ -29,6 +29,7 @@ fi
 
 if [[ -f /install/.nginx.lock ]]; then
     rm "/etc/nginx/apps/$app_name.conf"
+    # shellcheck disable=SC2154 # log is exported by box from sources/globals.sh
     systemctl reload nginx >> "$log" 2>&1
 fi
 
